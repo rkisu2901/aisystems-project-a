@@ -1,0 +1,19 @@
+# Secrets — never commit
+.env
+langfuse/.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Eval output (large, regenerated on each run)
+scripts/eval_results.json
+
+# OS
+.DS_Store
+~$*

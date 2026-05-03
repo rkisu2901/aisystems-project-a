@@ -1,0 +1,11 @@
+openai>=1.0.0
+langfuse>=2.0.0,<3.0.0
+psycopg2-binary
+pgvector
+python-dotenv
+rich
+# Week 2 additions
+rank-bm25          # production BM25 (optional — bm25_scratch.py works standalone)
+litellm            # A3.2 stretch: model-agnostic LLM with fallback
+ragas              # A3.1 core: RAGAS evaluation framework
+datasets           # required by ragas

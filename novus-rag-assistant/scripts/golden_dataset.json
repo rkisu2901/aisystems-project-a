@@ -1,0 +1,458 @@
+[
+  {
+    "id": "ACC-001",
+    "query": "What is the minimum balance required to open a Novus Bank savings account?",
+    "expected_answer": "The minimum deposit to open a Novus Bank savings account is ₹1,000 for standard customers. Novus Plus and Elite account holders have no minimum opening balance requirement.",
+    "expected_source": "01_account_opening_policy",
+    "difficulty": "easy",
+    "category": "account"
+  },
+  {
+    "id": "ACC-002",
+    "query": "How many people can hold a joint account at Novus Bank?",
+    "expected_answer": "Up to 3 individuals can hold a joint account at Novus Bank.",
+    "expected_source": "01_account_opening_policy",
+    "difficulty": "easy",
+    "category": "account"
+  },
+  {
+    "id": "ACC-003",
+    "query": "How long does it take to activate a Novus Bank account after video KYC?",
+    "expected_answer": "Account activation takes approximately 2 hours after successful video KYC completion.",
+    "expected_source": "01_account_opening_policy",
+    "difficulty": "easy",
+    "category": "account"
+  },
+  {
+    "id": "ACC-004",
+    "query": "What documents are mandatory to open a Novus Bank account?",
+    "expected_answer": "Aadhaar card and PAN card are mandatory for all Novus Bank account openings. Additionally, you need an address proof (Aadhaar if showing current address, or a recent utility bill/bank statement) and one passport-size photograph.",
+    "expected_source": "13_kyc_and_compliance",
+    "difficulty": "easy",
+    "category": "account"
+  },
+  {
+    "id": "MEM-001",
+    "query": "What is the AQB requirement for Novus Plus membership?",
+    "expected_answer": "Novus Plus requires an Average Quarterly Balance (AQB) of ₹1 lakh.",
+    "expected_source": "02_membership_tiers",
+    "difficulty": "easy",
+    "category": "membership"
+  },
+  {
+    "id": "MEM-002",
+    "query": "How many airport lounge visits does an Elite customer get per year?",
+    "expected_answer": "Novus Elite customers receive 4 complimentary airport lounge visits per year.",
+    "expected_source": "02_membership_tiers",
+    "difficulty": "easy",
+    "category": "membership"
+  },
+  {
+    "id": "MEM-003",
+    "query": "What happens if my AQB drops below the Novus Plus threshold?",
+    "expected_answer": "If your AQB drops below the ₹1 lakh Novus Plus threshold for two consecutive quarters, your account is downgraded to Standard. You will be notified 30 days before the downgrade takes effect and can add funds to maintain your Plus status.",
+    "expected_source": "02_membership_tiers",
+    "difficulty": "medium",
+    "category": "membership"
+  },
+  {
+    "id": "MEM-004",
+    "query": "Does Elite tier get a dedicated relationship manager?",
+    "expected_answer": "Yes, Novus Elite customers are assigned a dedicated Relationship Manager.",
+    "expected_source": "02_membership_tiers",
+    "difficulty": "easy",
+    "category": "membership"
+  },
+  {
+    "id": "CARD-001",
+    "query": "What is the daily ATM withdrawal limit for a Standard Novus debit card?",
+    "expected_answer": "Standard Novus debit card holders can withdraw up to ₹50,000 per day from ATMs.",
+    "expected_source": "03_debit_card_policy",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "CARD-002",
+    "query": "What is the contactless payment limit for Novus debit cards without a PIN?",
+    "expected_answer": "Contactless payments up to ₹5,000 can be made without a PIN on Novus debit cards.",
+    "expected_source": "03_debit_card_policy",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "CARD-003",
+    "query": "How much does it cost to replace a lost debit card for a Standard customer?",
+    "expected_answer": "Replacing a lost or damaged debit card costs ₹150 for Standard customers, ₹100 for Novus Plus customers, and is free for Elite customers.",
+    "expected_source": "03_debit_card_policy",
+    "difficulty": "medium",
+    "category": "payments"
+  },
+  {
+    "id": "CARD-004",
+    "query": "Is international usage enabled by default on my Novus debit card?",
+    "expected_answer": "No. International usage is disabled by default on all Novus debit cards. You must enable it via the Novus app before travelling abroad.",
+    "expected_source": "03_debit_card_policy",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "CC-001",
+    "query": "When is the billing cycle cut-off for Novus credit cards?",
+    "expected_answer": "The Novus credit card billing cycle closes on the 15th of each month. The payment due date is the 5th of the following month.",
+    "expected_source": "04_credit_card_policy",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "CC-002",
+    "query": "What is the minimum payment due on a Novus credit card?",
+    "expected_answer": "The minimum payment due on a Novus credit card is 5% of the outstanding balance or ₹500, whichever is higher.",
+    "expected_source": "04_credit_card_policy",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "CC-003",
+    "query": "What interest rate applies if I only pay the minimum due on my Novus credit card?",
+    "expected_answer": "If you pay only the minimum amount due, the revolving credit interest rate of 3.5% per month (42% per annum) applies on the remaining outstanding balance.",
+    "expected_source": "04_credit_card_policy",
+    "difficulty": "medium",
+    "category": "payments"
+  },
+  {
+    "id": "LOAN-001",
+    "query": "What is the minimum CIBIL score required for a Novus personal loan?",
+    "expected_answer": "A minimum CIBIL score of 750 is required to qualify for a Novus Bank personal loan.",
+    "expected_source": "05_personal_loan_policy",
+    "difficulty": "easy",
+    "category": "loans"
+  },
+  {
+    "id": "LOAN-002",
+    "query": "What is the maximum personal loan amount Novus Bank offers?",
+    "expected_answer": "Novus Bank offers personal loans up to ₹25 lakh.",
+    "expected_source": "05_personal_loan_policy",
+    "difficulty": "easy",
+    "category": "loans"
+  },
+  {
+    "id": "LOAN-003",
+    "query": "Can I prepay my personal loan before 6 EMIs?",
+    "expected_answer": "No. Prepayment of a Novus Bank personal loan is not allowed before completing 6 EMIs. After 6 EMIs, prepayment is permitted with a 2% penalty on the outstanding amount.",
+    "expected_source": "05_personal_loan_policy",
+    "difficulty": "medium",
+    "category": "loans"
+  },
+  {
+    "id": "LOAN-004",
+    "query": "What is the LTV ratio for a home loan on a property valued below ₹30 lakh?",
+    "expected_answer": "For properties valued up to ₹30 lakh, Novus Bank offers a loan-to-value ratio of up to 80%, meaning you need to bring a 20% down payment.",
+    "expected_source": "06_home_loan_policy",
+    "difficulty": "medium",
+    "category": "loans"
+  },
+  {
+    "id": "LOAN-005",
+    "query": "What happens if my EMI bounces at Novus Bank?",
+    "expected_answer": "A bounce fee of ₹500 is charged if your EMI is returned due to insufficient funds. There is a 3-day grace period after the due date before the bounce fee is triggered. Late interest of 2% per month on the overdue amount also applies.",
+    "expected_source": "07_emi_and_repayment",
+    "difficulty": "medium",
+    "category": "loans"
+  },
+  {
+    "id": "UPI-001",
+    "query": "What is the daily UPI transaction limit at Novus Bank?",
+    "expected_answer": "The daily UPI transaction limit at Novus Bank is ₹1,00,000 (₹1 lakh). The per-transaction limit is also ₹1,00,000.",
+    "expected_source": "08_upi_and_digital_payments",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "UPI-002",
+    "query": "How long does a failed UPI transaction take to be reversed?",
+    "expected_answer": "If money is deducted but not credited to the beneficiary, the auto-reversal happens within 24 hours in most cases, with a maximum of 3 working days as per NPCI guidelines.",
+    "expected_source": "08_upi_and_digital_payments",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "UPI-003",
+    "query": "What happens if I enter my UPI PIN wrong 3 times?",
+    "expected_answer": "After 3 wrong UPI PIN attempts, your UPI access is blocked for 24 hours. You can reset it via the Novus app using your debit card details.",
+    "expected_source": "08_upi_and_digital_payments",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "UPI-004",
+    "query": "Within how many days should I raise a UPI dispute to get auto-escalation to NPCI?",
+    "expected_answer": "You must raise a UPI dispute within 3 business days of the transaction for it to be auto-escalated to NPCI. After 3 days, disputes are still accepted but may take up to 30 days to resolve.",
+    "expected_source": "08_upi_and_digital_payments",
+    "difficulty": "medium",
+    "category": "payments"
+  },
+  {
+    "id": "NEFT-001",
+    "query": "What is the minimum amount for an RTGS transfer?",
+    "expected_answer": "The minimum amount for an RTGS transfer is ₹2,00,000 (₹2 lakh). RTGS is designed for high-value transfers only.",
+    "expected_source": "09_neft_rtgs_imps",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "NEFT-002",
+    "query": "Is IMPS available on Sundays and public holidays?",
+    "expected_answer": "Yes. IMPS is available 24 hours a day, 7 days a week, 365 days a year, including Sundays and public holidays.",
+    "expected_source": "09_neft_rtgs_imps",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "NEFT-003",
+    "query": "What is the transfer limit for a new beneficiary in the first 24 hours?",
+    "expected_answer": "For a new beneficiary, the combined transfer limit across all modes (NEFT, RTGS, IMPS) is ₹25,000 in the first 24 hours. After 24 hours, full limits apply. There is also a 30-minute security cooldown before the first transfer to a new beneficiary.",
+    "expected_source": "09_neft_rtgs_imps",
+    "difficulty": "medium",
+    "category": "payments"
+  },
+  {
+    "id": "FD-001",
+    "query": "What is the interest rate on a 2-year fixed deposit for a standard Novus customer?",
+    "expected_answer": "Standard customers earn 7.20% per annum on fixed deposits with a tenure of 1 to 2 years.",
+    "expected_source": "10_fixed_deposit_policy",
+    "difficulty": "easy",
+    "category": "products"
+  },
+  {
+    "id": "FD-002",
+    "query": "What is the FD interest rate for an Elite senior citizen with a 3-year deposit?",
+    "expected_answer": "An Elite senior citizen with a 3-year FD earns: base rate 7.50% + Elite bonus 1.00% + senior citizen bonus 0.50% = 9.00% per annum.",
+    "expected_source": "10_fixed_deposit_policy",
+    "difficulty": "hard",
+    "category": "products"
+  },
+  {
+    "id": "FD-003",
+    "query": "Can I get a loan against my fixed deposit at Novus Bank?",
+    "expected_answer": "Yes. Novus Bank offers an overdraft of up to 90% of the FD value at an interest rate of FD rate + 1.5%. The FD must have a minimum tenure of 6 months. The FD continues earning interest while the loan is outstanding.",
+    "expected_source": "10_fixed_deposit_policy",
+    "difficulty": "medium",
+    "category": "products"
+  },
+  {
+    "id": "FD-004",
+    "query": "What is the penalty for breaking a fixed deposit before maturity?",
+    "expected_answer": "Premature withdrawal of a Novus Bank FD incurs a 1% penalty on the applicable interest rate for the period the FD was held. The FD can be broken at any time after 7 days from the opening date.",
+    "expected_source": "10_fixed_deposit_policy",
+    "difficulty": "medium",
+    "category": "products"
+  },
+  {
+    "id": "INV-001",
+    "query": "What is the minimum SIP amount at Novus Bank?",
+    "expected_answer": "The minimum SIP amount at Novus Bank is ₹500 per month.",
+    "expected_source": "11_investment_products",
+    "difficulty": "easy",
+    "category": "products"
+  },
+  {
+    "id": "INV-002",
+    "query": "How many active SIPs can I have simultaneously?",
+    "expected_answer": "You can have a maximum of 20 active SIPs simultaneously at Novus Bank.",
+    "expected_source": "11_investment_products",
+    "difficulty": "easy",
+    "category": "products"
+  },
+  {
+    "id": "INV-003",
+    "query": "What is the minimum investment for digital gold at Novus Bank?",
+    "expected_answer": "The minimum investment in Novus Bank's Digital Gold product is ₹100.",
+    "expected_source": "11_investment_products",
+    "difficulty": "easy",
+    "category": "products"
+  },
+  {
+    "id": "INV-004",
+    "query": "When do mutual fund equity redemption proceeds get credited to my account?",
+    "expected_answer": "Equity mutual fund redemption proceeds are credited to your Novus Bank savings account within T+3 working days. Debt funds are credited within T+2 working days.",
+    "expected_source": "11_investment_products",
+    "difficulty": "medium",
+    "category": "products"
+  },
+  {
+    "id": "INV-005",
+    "query": "What is the tax benefit on NPS Tier 1 contributions?",
+    "expected_answer": "NPS Tier 1 contributions qualify for a tax deduction of up to ₹1,50,000 under Section 80C, plus an additional ₹50,000 under Section 80CCD(1B), for a total potential deduction of ₹2,00,000.",
+    "expected_source": "11_investment_products",
+    "difficulty": "hard",
+    "category": "products"
+  },
+  {
+    "id": "FRAUD-001",
+    "query": "What is my liability if I report an unauthorized transaction within 3 days?",
+    "expected_answer": "If you report an unauthorized transaction within 3 calendar days, your liability is zero — Novus Bank bears the full loss.",
+    "expected_source": "12_fraud_and_dispute_policy",
+    "difficulty": "easy",
+    "category": "fraud"
+  },
+  {
+    "id": "FRAUD-002",
+    "query": "What happens if I report fraud after 7 days?",
+    "expected_answer": "If you report a fraudulent transaction more than 7 calendar days after it occurred, you bear the full transaction amount as liability.",
+    "expected_source": "12_fraud_and_dispute_policy",
+    "difficulty": "easy",
+    "category": "fraud"
+  },
+  {
+    "id": "FRAUD-003",
+    "query": "I shared my OTP with someone and got defrauded. Am I covered?",
+    "expected_answer": "Unfortunately, if you voluntarily shared your OTP (even if you were deceived), this falls under the 'Full Liability' condition. The zero-liability protection does not apply when the customer shared their OTP, PIN, or password. You would be responsible for the full transaction amount.",
+    "expected_source": "12_fraud_and_dispute_policy",
+    "difficulty": "hard",
+    "category": "fraud"
+  },
+  {
+    "id": "FRAUD-004",
+    "query": "How long does Novus Bank take to complete a fraud investigation?",
+    "expected_answer": "Novus Bank completes fraud investigations within 10 working days for simple cases and up to 45 working days for complex cases involving multiple parties.",
+    "expected_source": "12_fraud_and_dispute_policy",
+    "difficulty": "medium",
+    "category": "fraud"
+  },
+  {
+    "id": "FRAUD-005",
+    "query": "What should I do if I suspect my SIM has been swapped?",
+    "expected_answer": "If you suspect a SIM swap, immediately report it to both Novus Bank (1800-NOVUS) and your telecom operator. Novus Bank will block all OTP-based authentication within 30 minutes of the report. Account access is restored only after in-person verification at a Novus branch.",
+    "expected_source": "12_fraud_and_dispute_policy",
+    "difficulty": "medium",
+    "category": "fraud"
+  },
+  {
+    "id": "KYC-001",
+    "query": "How often does Novus Bank require re-KYC for standard (low risk) customers?",
+    "expected_answer": "Standard (low risk) customers need to complete re-KYC every 2 years.",
+    "expected_source": "13_kyc_and_compliance",
+    "difficulty": "easy",
+    "category": "account"
+  },
+  {
+    "id": "KYC-002",
+    "query": "What happens if I don't complete re-KYC within the grace period?",
+    "expected_answer": "After the re-KYC due date, there is a 30-day grace period during which your account remains active. After the grace period, your account is marked restricted — only inward credits are allowed; outward transfers are blocked. After 90 days of non-compliance, the account can be frozen.",
+    "expected_source": "13_kyc_and_compliance",
+    "difficulty": "hard",
+    "category": "account"
+  },
+  {
+    "id": "FEES-001",
+    "query": "How many free ATM transactions do Standard customers get at other banks per month?",
+    "expected_answer": "Standard customers get 3 free ATM transactions per month at other banks' ATMs. After that, a charge of ₹20 per transaction applies.",
+    "expected_source": "14_fees_and_charges",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "FEES-002",
+    "query": "What is the SMS alert charge per month at Novus Bank?",
+    "expected_answer": "Transaction SMS alerts cost ₹17 per month (billed quarterly at ₹51). Novus Plus and Elite customers get SMS alerts included free.",
+    "expected_source": "14_fees_and_charges",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "FEES-003",
+    "query": "What is the annual maintenance fee for a Standard Novus savings account?",
+    "expected_answer": "The annual maintenance fee for a Standard Novus Bank savings account is ₹299 per year, charged on April 1.",
+    "expected_source": "14_fees_and_charges",
+    "difficulty": "easy",
+    "category": "account"
+  },
+  {
+    "id": "DORM-001",
+    "query": "After how many months of inactivity does a Novus account become dormant?",
+    "expected_answer": "A Novus Bank account becomes dormant after 24 consecutive months (2 years) of no customer-initiated transactions.",
+    "expected_source": "15_account_closure_and_dormancy",
+    "difficulty": "easy",
+    "category": "account"
+  },
+  {
+    "id": "DORM-002",
+    "query": "What happens to my money if my account stays unclaimed for 10 years?",
+    "expected_answer": "If your account remains unclaimed for 10 years, the balance is transferred to RBI's Depositor Education and Awareness (DEA) Fund. You can still reclaim the funds by filing a claim with Novus Bank, which will recover the amount from RBI on your behalf. The process takes 30–45 working days.",
+    "expected_source": "15_account_closure_and_dormancy",
+    "difficulty": "hard",
+    "category": "account"
+  },
+  {
+    "id": "DORM-003",
+    "query": "How much does it cost to reactivate a dormant account?",
+    "expected_answer": "Reactivating a dormant account costs ₹500 for Standard customers, ₹250 for Plus customers, and is free for Elite customers. You must visit a branch in person and make a minimum ₹1,000 transaction.",
+    "expected_source": "15_account_closure_and_dormancy",
+    "difficulty": "medium",
+    "category": "account"
+  },
+  {
+    "id": "GRIEV-001",
+    "query": "How many days does Novus Bank have to resolve an L1 complaint?",
+    "expected_answer": "Novus Bank must resolve L1 (first-level) complaints within 3 working days. Priority complaints such as fraud or account freezes must be resolved within 1 working day.",
+    "expected_source": "16_grievance_and_escalation",
+    "difficulty": "easy",
+    "category": "grievance"
+  },
+  {
+    "id": "GRIEV-002",
+    "query": "How much compensation can I get if Novus Bank delays resolving my complaint?",
+    "expected_answer": "If Novus Bank's L2 team upholds your complaint and the delay was on the bank's part, you are eligible for compensation of ₹100 per day of delay beyond the L1 SLA, up to a maximum of ₹5,000 per complaint.",
+    "expected_source": "16_grievance_and_escalation",
+    "difficulty": "hard",
+    "category": "grievance"
+  },
+  {
+    "id": "GRIEV-003",
+    "query": "When can I approach the RBI Banking Ombudsman against Novus Bank?",
+    "expected_answer": "You can approach the RBI Banking Ombudsman if Novus Bank has not replied within 30 days of your complaint, or if you are dissatisfied with the bank's final response. Complaints must be filed within 1 year of the bank's final reply via the RBI's portal at cms.rbi.org.in.",
+    "expected_source": "16_grievance_and_escalation",
+    "difficulty": "hard",
+    "category": "grievance"
+  },
+  {
+    "id": "INTL-001",
+    "query": "What is the LRS limit for international remittances per year?",
+    "expected_answer": "Under RBI's Liberalised Remittance Scheme (LRS), resident Indians can remit up to USD 2,50,000 per financial year without RBI approval.",
+    "expected_source": "17_international_banking",
+    "difficulty": "easy",
+    "category": "payments"
+  },
+  {
+    "id": "INTL-002",
+    "query": "What is the TCS rate on LRS remittances above ₹7 lakh?",
+    "expected_answer": "Tax Collected at Source (TCS) at 20% applies to LRS remittances above ₹7 lakh per financial year. This TCS is creditable against your income tax liability.",
+    "expected_source": "17_international_banking",
+    "difficulty": "hard",
+    "category": "payments"
+  },
+  {
+    "id": "APP-001",
+    "query": "What happens after 3 wrong MPIN attempts in the Novus app?",
+    "expected_answer": "After 3 wrong MPIN attempts, the Novus app is locked for 2 hours. After the lockout, you need to use OTP to reset access.",
+    "expected_source": "18_net_banking_and_app",
+    "difficulty": "easy",
+    "category": "account"
+  },
+  {
+    "id": "APP-002",
+    "query": "When does a transaction require 2FA in the Novus app?",
+    "expected_answer": "Any fund transfer above ₹10,000 requires OTP (2FA) even within the app. 2FA is also required for adding a new beneficiary, changing registered mobile/email, enabling international card usage, and changing MPIN or password.",
+    "expected_source": "18_net_banking_and_app",
+    "difficulty": "medium",
+    "category": "account"
+  },
+  {
+    "id": "APP-003",
+    "query": "How long is the session timeout for Novus Bank net banking?",
+    "expected_answer": "Novus Bank net banking sessions auto-timeout after 15 minutes of inactivity. Re-authentication via MPIN or OTP is required after timeout.",
+    "expected_source": "18_net_banking_and_app",
+    "difficulty": "easy",
+    "category": "account"
+  }
+]

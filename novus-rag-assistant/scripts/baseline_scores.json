@@ -1,0 +1,107 @@
+{
+  "scorecard": {
+    "n": 57,
+    "hit_rate": 0.9825,
+    "mrr": 0.9357,
+    "faithfulness": 0.9825,
+    "correctness": 0.7825,
+    "faithfulness_raw": 4.91,
+    "correctness_raw": 3.91
+  },
+  "stratified": {
+    "by_category": {
+      "account": {
+        "n": 13,
+        "hit_rate": 1.0,
+        "mrr": 0.9103,
+        "faithfulness": 1.0,
+        "correctness": 0.7846,
+        "faithfulness_raw": 5.0,
+        "correctness_raw": 3.92
+      },
+      "membership": {
+        "n": 4,
+        "hit_rate": 1.0,
+        "mrr": 1.0,
+        "faithfulness": 1.0,
+        "correctness": 0.85,
+        "faithfulness_raw": 5.0,
+        "correctness_raw": 4.25
+      },
+      "payments": {
+        "n": 18,
+        "hit_rate": 1.0,
+        "mrr": 0.9722,
+        "faithfulness": 1.0,
+        "correctness": 0.8111,
+        "faithfulness_raw": 5.0,
+        "correctness_raw": 4.06
+      },
+      "loans": {
+        "n": 5,
+        "hit_rate": 1.0,
+        "mrr": 0.9,
+        "faithfulness": 0.84,
+        "correctness": 0.56,
+        "faithfulness_raw": 4.2,
+        "correctness_raw": 2.8
+      },
+      "products": {
+        "n": 9,
+        "hit_rate": 0.8889,
+        "mrr": 0.8889,
+        "faithfulness": 1.0,
+        "correctness": 0.7556,
+        "faithfulness_raw": 5.0,
+        "correctness_raw": 3.78
+      },
+      "fraud": {
+        "n": 5,
+        "hit_rate": 1.0,
+        "mrr": 0.9,
+        "faithfulness": 0.96,
+        "correctness": 0.84,
+        "faithfulness_raw": 4.8,
+        "correctness_raw": 4.2
+      },
+      "grievance": {
+        "n": 3,
+        "hit_rate": 1.0,
+        "mrr": 1.0,
+        "faithfulness": 1.0,
+        "correctness": 0.8667,
+        "faithfulness_raw": 5.0,
+        "correctness_raw": 4.33
+      }
+    },
+    "by_difficulty": {
+      "easy": {
+        "n": 34,
+        "hit_rate": 0.9706,
+        "mrr": 0.9069,
+        "faithfulness": 0.9765,
+        "correctness": 0.8059,
+        "faithfulness_raw": 4.88,
+        "correctness_raw": 4.03
+      },
+      "medium": {
+        "n": 15,
+        "hit_rate": 1.0,
+        "mrr": 0.9667,
+        "faithfulness": 0.9867,
+        "correctness": 0.6667,
+        "faithfulness_raw": 4.93,
+        "correctness_raw": 3.33
+      },
+      "hard": {
+        "n": 8,
+        "hit_rate": 1.0,
+        "mrr": 1.0,
+        "faithfulness": 1.0,
+        "correctness": 0.9,
+        "faithfulness_raw": 5.0,
+        "correctness_raw": 4.5
+      }
+    }
+  }
+}

@@ -1,0 +1,137 @@
+[
+  {
+    "query": "What is the minimum Average Quarterly Balance required to qualify for Novus Plus?",
+    "expected_answer": "Maintain AQB of ₹1,00,000 (₹1 lakh) or more across savings + FD accounts for the full quarter.",
+    "difficulty": "easy",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-STA-01",
+    "expected_source": "02_membership_tiers",
+    "persona": "standard"
+  },
+  {
+    "query": "How does a customer upgrade from Standard to Novus Plus?",
+    "expected_answer": "Automatic at next quarter review if AQB criterion is met for 2 consecutive quarters.",
+    "difficulty": "medium",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-STA-02",
+    "expected_source": "02_membership_tiers",
+    "persona": "standard"
+  },
+  {
+    "query": "What happens if my AQB drops below ₹75,000 for two consecutive quarters while I am in Novus Plus?",
+    "expected_answer": "Reverted to Standard with 30-day notice.",
+    "difficulty": "medium",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-STA-03",
+    "expected_source": "02_membership_tiers",
+    "persona": "standard"
+  },
+  {
+    "query": "What benefits do Novus Elite members receive that Standard members do not?",
+    "expected_answer": "Dedicated Relationship Manager, unlimited free NEFT/RTGS, 4 airport lounge visits/year, priority review for loan return windows, and 0% forex cross-currency charge.",
+    "difficulty": "hard",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-STA-04",
+    "expected_source": "02_membership_tiers",
+    "persona": "standard"
+  },
+  {
+    "query": "When will a customer be notified about a potential downgrade in membership tier?",
+    "expected_answer": "Customers receive SMS/email 30 days before potential downgrade.",
+    "difficulty": "easy",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-STA-05",
+    "expected_source": "02_membership_tiers",
+    "persona": "standard"
+  },
+  {
+    "query": "I've been a Novus Plus member but my AQB dropped below ₹75,000 for two quarters. Why wasn't I warned about my downgrade to Standard?",
+    "expected_answer": "Customers receive SMS/email 30 days before potential downgrade.",
+    "difficulty": "easy",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-FRU-01",
+    "expected_source": "02_membership_tiers",
+    "persona": "frustrated"
+  },
+  {
+    "query": "I thought I would be upgraded to Novus Elite automatically, but I didn't receive any information. What are the criteria for that upgrade?",
+    "expected_answer": "Maintain AQB of ₹5,00,000 or more, OR maintain investments of ₹10,00,000 or more.",
+    "difficulty": "medium",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-FRU-02",
+    "expected_source": "02_membership_tiers",
+    "persona": "frustrated"
+  },
+  {
+    "query": "Why do I have to pay an account maintenance fee if I'm on the Standard tier?",
+    "expected_answer": "Account maintenance fee for Standard is ₹299/year.",
+    "difficulty": "easy",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-FRU-03",
+    "expected_source": "02_membership_tiers",
+    "persona": "frustrated"
+  },
+  {
+    "query": "I was expecting a Relationship Manager after my upgrade to Novus Elite, but it's been over 5 working days. What's going on?",
+    "expected_answer": "Assigned within 5 working days of Elite upgrade.",
+    "difficulty": "easy",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-FRU-04",
+    "expected_source": "02_membership_tiers",
+    "persona": "frustrated"
+  },
+  {
+    "query": "After my recent downgrade to Standard, I'm concerned about my debit card replacement fees. How much will I have to pay now?",
+    "expected_answer": "Debit card replacement fee for Standard is ₹150.",
+    "difficulty": "easy",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-FRU-05",
+    "expected_source": "02_membership_tiers",
+    "persona": "frustrated"
+  },
+  {
+    "query": "What is the penalty if I fall below the AQB required for Novus Plus?",
+    "expected_answer": "If AQB drops below ₹75,000 for 2 consecutive quarters, you will be reverted to Standard with 30-day notice.",
+    "difficulty": "medium",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-MIS-01",
+    "expected_source": "02_membership_tiers",
+    "persona": "mismatch"
+  },
+  {
+    "query": "Can I get a dedicated relationship manager if my average balance is ₹1 lakh?",
+    "expected_answer": "No, a dedicated relationship manager is only available for Novus Elite members.",
+    "difficulty": "easy",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-MIS-02",
+    "expected_source": "02_membership_tiers",
+    "persona": "mismatch"
+  },
+  {
+    "query": "How many free NEFT/RTGS transactions do I get with the Standard membership?",
+    "expected_answer": "NEFT/RTGS charges are per schedule in the Standard membership.",
+    "difficulty": "easy",
+    "category": "payments",
+    "id": "02_MEMBE-SYN-MIS-03",
+    "expected_source": "02_membership_tiers",
+    "persona": "mismatch"
+  },
+  {
+    "query": "If I maintain ₹5,00,000 in my savings account for a quarter, will I be upgraded to Novus Elite immediately?",
+    "expected_answer": "You will be upgraded automatically at the next quarter review if the eligibility criterion is met.",
+    "difficulty": "medium",
+    "category": "membership",
+    "id": "02_MEMBE-SYN-MIS-04",
+    "expected_source": "02_membership_tiers",
+    "persona": "mismatch"
+  },
+  {
+    "query": "Does Novus Elite offer any airport lounge access?",
+    "expected_answer": "Yes, Novus Elite offers 4 visits/year to partner domestic airport lounges.",
+    "difficulty": "easy",
+    "category": "products",
+    "id": "02_MEMBE-SYN-MIS-05",
+    "expected_source": "02_membership_tiers",
+    "persona": "mismatch"
+  }
+]
