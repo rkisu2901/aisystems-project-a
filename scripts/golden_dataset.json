@@ -1,0 +1,42 @@
+[
+  {
+    "id": "q01",
+    "query": "What is the standard return window for products?",
+    "expected_answer": "The standard return window is 30 calendar days from the delivery date.",
+    "expected_source": "01_return_policy.md",
+    "difficulty": "easy",
+    "category": "returns"
+  },
+  {
+    "id": "q02",
+    "query": "Does Acmera ship internationally?",
+    "expected_answer": "No, Acmera currently does not offer international shipping. Customers can use third-party forwarding services at their own cost and risk.",
+    "expected_source": "03_shipping_policy.md",
+    "difficulty": "easy",
+    "category": "shipping"
+  },
+  {
+    "id": "q03",
+    "query": "What warranty comes with Acmera electronics?",
+    "expected_answer": "All electronics come with a minimum 1-year manufacturer warranty covering defects in materials and workmanship under normal use.",
+    "expected_source": "04_warranty_policy.md",
+    "difficulty": "easy",
+    "category": "warranty"
+  },
+  {
+    "id": "q04",
+    "query": "What is the spending threshold for Premium Gold?",
+    "expected_answer": "Premium Gold requires spending ₹75,000 in a calendar year or maintaining Premium Silver for 3+ consecutive years.",
+    "expected_source": "02_premium_membership.md",
+    "difficulty": "easy",
+    "category": "membership"
+  },
+  {
+    "id": "q05",
+    "query": "What items cannot be returned?",
+    "expected_answer": "Opened software, digital downloads, gift cards, perishable goods, and personalized items cannot be returned.",
+    "expected_source": "01_return_policy.md",
+    "difficulty": "easy",
+    "category": "returns"
+  }
+]
