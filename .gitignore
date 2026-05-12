@@ -22,3 +22,14 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude internals and IDE
+.claude/
+.obsidian/
+
+# Source inputs (immutable raw data)
+raw/
+
+# Temp / test files
+novus-rag-assistant/query.json
+*.docx

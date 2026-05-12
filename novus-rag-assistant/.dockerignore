@@ -1,0 +1,7 @@
+.env
+langfuse/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+scripts/eval_results.json

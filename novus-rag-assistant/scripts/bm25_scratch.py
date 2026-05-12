@@ -50,14 +50,14 @@ def bm25_simple(chunks: list[dict], query: str) -> list[dict]:
         (see rank_bm25 library used in rag.py hybrid path).
     """
     query_tokens = set(query.lower().split())
-    scored: list[tuple[int, dict]] = []
+    scored: list[tuple[int, int, dict]] = []
 
-    for chunk in chunks:
+    for i, chunk in enumerate(chunks):
         chunk_tokens = chunk["content"].lower().split()
         score = sum(1 for t in chunk_tokens if t in query_tokens)
-        scored.append((score, chunk))
+        scored.append((score, i, chunk))
 
-    return [c for score, c in sorted(scored, reverse=True) if score > 0]
+    return [c for score, _, c in sorted(scored, key=lambda x: x[0], reverse=True) if score > 0]
 
 
 # ---------------------------------------------------------------------------

@@ -9,3 +9,9 @@ rank-bm25          # production BM25 (optional — bm25_scratch.py works standal
 litellm            # A3.2 stretch: model-agnostic LLM with fallback
 ragas              # A3.1 core: RAGAS evaluation framework
 datasets           # required by ragas
+# Week 3 additions
+numpy              # P1A.1: cosine similarity in SemanticCache
+fastapi            # D1.1: API wrapper
+uvicorn[standard]  # D1.1: ASGI server
+requests           # D4.1: remote eval harness HTTP calls
+gptcache           # P1A.3: GPTCache backend (optional — falls back to in-memory)

@@ -12,9 +12,11 @@ Each judge returns {"score": int, "reason": str} — the reason is stored for fa
 analysis but not aggregated numerically.
 
 Usage:
-    python scripts/eval_harness.py                  # run all 55 queries
-    python scripts/eval_harness.py --save-baseline  # also saves baseline_scores.json
-    python scripts/eval_harness.py --limit 10       # quick smoke-test on first 10
+    python scripts/eval_harness.py                            # local, all 57 queries
+    python scripts/eval_harness.py --save-baseline            # also saves baseline_scores.json
+    python scripts/eval_harness.py --limit 10                 # quick smoke-test on first 10
+    python scripts/eval_harness.py --use-hybrid               # hybrid BM25+dense+RRF retrieval
+    python scripts/eval_harness.py --remote --api-url https://<alb-dns>   # remote deployed API (D4.1)
 """
 
 import argparse
@@ -32,6 +34,12 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from scripts.rag import ask
+
+try:
+    import requests as _requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
 
 try:
     from langfuse import Langfuse
@@ -188,21 +196,82 @@ def attach_langfuse_scores(trace_id: str, faithfulness: float, correctness: floa
 
 
 # ---------------------------------------------------------------------------
+# D4.1 — Remote ask: call deployed API instead of local import
+# ---------------------------------------------------------------------------
+
+def ask_remote(query: str, api_url: str, mode: str = "dense") -> dict:
+    """Call the deployed FastAPI /query endpoint and return a result dict
+    shaped identically to the local ask() return value.
+
+    Requires `requests` package and a running API at api_url.
+    """
+    if not REQUESTS_AVAILABLE:
+        raise RuntimeError("'requests' package required for --remote mode. pip install requests")
+
+    response = _requests.post(
+        f"{api_url.rstrip('/')}/query",
+        json={"query": query, "mode": mode},
+        timeout=30,
+    )
+    response.raise_for_status()
+    data = response.json()
+
+    return {
+        "query": query,
+        "answer": data["answer"],
+        "retrieved_chunks": data.get("retrieved_chunks", []),
+        "context": data.get("context", ""),
+        "retrieval_mode": data.get("retrieval_mode", "remote"),
+        "model_used": data.get("model_used", "unknown"),
+        "cache_similarity": data.get("cache_similarity"),
+        "trace_id": data.get("trace_id"),
+        "elapsed_seconds": data.get("elapsed_seconds", 0.0),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main eval loop
 # ---------------------------------------------------------------------------
 
-def run_eval(dataset: list[dict], verbose: bool = True) -> list[dict]:
+def run_eval(dataset: list[dict], verbose: bool = True, use_hybrid: bool = False,
+             remote: bool = False, api_url: str | None = None) -> list[dict]:
     """Run the full eval pipeline over all dataset entries.
+
+    Args:
+        remote:   If True, call ask_remote() against the deployed API.
+        api_url:  Required when remote=True. Base URL of the deployed API.
 
     Returns a list of per-entry result dicts with all metrics.
     """
+    if remote and not api_url:
+        raise ValueError("--api-url is required when --remote is set")
+
     results = []
 
     for i, entry in enumerate(dataset):
         if verbose:
             print(f"  [{i+1}/{len(dataset)}] {entry['id']}: {entry['query'][:60]}…")
 
-        rag_result = ask(entry["query"])
+        if remote:
+            mode = "hybrid" if use_hybrid else "dense"
+            try:
+                rag_result = ask_remote(entry["query"], api_url, mode=mode)
+            except Exception as exc:
+                print(f"    [WARN] Remote call failed for {entry['id']}: {exc} — skipping")
+                results.append({
+                    "id": entry["id"], "query": entry["query"],
+                    "category": entry.get("category", "unknown"),
+                    "difficulty": entry.get("difficulty", "unknown"),
+                    "expected_source": entry["expected_source"],
+                    "answer": "ERROR", "retrieved_sources": [],
+                    "hit": False, "mrr": 0.0,
+                    "faithfulness": 1, "faithfulness_reason": "remote error",
+                    "correctness": 1, "correctness_reason": "remote error",
+                    "elapsed_seconds": 0.0, "trace_id": None,
+                })
+                continue
+        else:
+            rag_result = ask(entry["query"], use_hybrid=use_hybrid)
 
         hit = check_retrieval_hit(rag_result["retrieved_chunks"], entry["expected_source"])
         mrr = calculate_mrr(rag_result["retrieved_chunks"], entry["expected_source"])
@@ -303,15 +372,31 @@ def main():
     parser.add_argument("--save-baseline", action="store_true", help="Save scores as baseline")
     parser.add_argument("--limit", type=int, default=None, help="Evaluate only first N entries")
     parser.add_argument("--quiet", action="store_true", help="Suppress per-entry progress")
+    parser.add_argument("--use-hybrid", action="store_true", help="Use hybrid BM25+dense+RRF retrieval (A2.3)")
+    parser.add_argument("--remote", action="store_true", help="Call deployed API instead of local import (D4.1)")
+    parser.add_argument("--api-url", type=str, default=None, help="Base URL of deployed API, e.g. https://<alb-dns>")
     args = parser.parse_args()
 
     dataset = json.loads(DATASET_PATH.read_text(encoding="utf-8"))
     if args.limit:
         dataset = dataset[: args.limit]
 
-    print(f"\nRunning eval on {len(dataset)} queries…\n")
+    if args.remote:
+        mode_label = f"REMOTE ({args.api_url})"
+    elif args.use_hybrid:
+        mode_label = "HYBRID (BM25+dense+RRF)"
+    else:
+        mode_label = "DENSE (pgvector only)"
+
+    print(f"\nRunning eval on {len(dataset)} queries… [{mode_label}]\n")
     t0 = time.time()
-    results = run_eval(dataset, verbose=not args.quiet)
+    results = run_eval(
+        dataset,
+        verbose=not args.quiet,
+        use_hybrid=args.use_hybrid,
+        remote=args.remote,
+        api_url=args.api_url,
+    )
     elapsed = round(time.time() - t0, 1)
 
     scorecard = compute_scorecard(results)
