@@ -337,6 +337,12 @@ Resources:
               Value: !Ref DBUsername
             - Name: PG_DATABASE
               Value: novus_kb
+            - Name: LANGFUSE_PUBLIC_KEY
+              Value: pk-lf-3145d5cb-cb4f-4492-ab57-5a44a84d8a04
+            - Name: LANGFUSE_SECRET_KEY
+              Value: sk-lf-fab17270-12c9-43ce-b5bf-c8a54f95fa2d
+            - Name: LANGFUSE_HOST
+              Value: https://cloud.langfuse.com
 
   # CloudWatch log group
   LogGroup:
