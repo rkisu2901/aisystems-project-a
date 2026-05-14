@@ -100,7 +100,7 @@ Port 5432 (Langfuse Postgres) and 5433 (pgvector) are intentionally different �
 
 | File | Committed? | Notes |
 |---|---|---|
-| `scripts/golden_dataset.json` | ✅ yes | Ground truth — 55 hand-written Q&A pairs; never auto-generate over this |
+| `scripts/golden_dataset.json` | ✅ yes | Ground truth — 57 hand-written Q&A pairs; never auto-generate over this |
 | `scripts/baseline_scores.json` | ✅ yes | Saved Week 1 benchmark; `check_regression.py` compares against this |
 | `scripts/failure_taxonomy.md` | ✅ yes | Documents 5 failure modes + Week 2 fix strategy |
 | `scripts/eval_results.json` | ❌ gitignored | Output of the latest `eval_harness.py` run |
