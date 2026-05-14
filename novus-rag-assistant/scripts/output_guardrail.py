@@ -5,8 +5,14 @@ check_hallucination(answer, context) -> HallucinationResult
   Extracts every factual claim from the answer, verifies each against context,
   returns structured result with per-claim evidence and overall has_hallucination flag.
 
+  Fails CLOSED on error: if the judge call fails, has_hallucination=True is returned
+  so the pipeline falls back to a safe message rather than silently passing a
+  potentially hallucinated answer. Appropriate for banking/finance domains.
+
+FALLBACK_ANSWER: safe message returned by ask() when output guardrail fires twice.
+
 Usage:
-    from scripts.output_guardrail import check_hallucination
+    from scripts.output_guardrail import check_hallucination, FALLBACK_ANSWER
     result = check_hallucination(answer, context)
     if result.has_hallucination:
         print("WARN:", [c.claim for c in result.claims if not c.supported])
@@ -40,6 +46,13 @@ Rules:
 - Include only factual claims — skip filler phrases like "I hope this helps".
 - Return ONLY the JSON object, no other text."""
 
+# Shown to the customer when both generation attempts fail the output guardrail.
+FALLBACK_ANSWER = (
+    "I found some relevant information but cannot confirm all the details with "
+    "full accuracy. Please contact Novus Bank support at 1800-NOVUS for a "
+    "verified answer to your question."
+)
+
 
 @dataclass
 class Claim:
@@ -58,9 +71,10 @@ def check_hallucination(answer: str, context: str) -> HallucinationResult:
     """Verify all factual claims in answer against context.
 
     Returns HallucinationResult with per-claim breakdown.
-    Fails open (has_hallucination=False) if the LLM call fails.
+    Fails CLOSED on API error or parse error: returns has_hallucination=True
+    so that a broken judge blocks the answer rather than silently passing it.
     """
-    prompt = f"CONTEXT:\n{context[:3000]}\n\nANSWER:\n{answer}"
+    prompt = f"CONTEXT:\n{context[:4000]}\n\nANSWER:\n{answer}"
     try:
         resp = _client.chat.completions.create(
             model="gpt-4o-mini",
@@ -81,9 +95,10 @@ def check_hallucination(answer: str, context: str) -> HallucinationResult:
             )
             for c in data.get("claims", [])
         ]
-        return HallucinationResult(
-            claims=claims,
-            has_hallucination=data.get("has_hallucination", False),
-        )
+        # Re-derive has_hallucination from claims to guard against model
+        # inconsistency (e.g. has_hallucination=false but unsupported claims listed).
+        has_hallucination = any(not c.supported for c in claims) or data.get("has_hallucination", False)
+        return HallucinationResult(claims=claims, has_hallucination=has_hallucination)
     except Exception:
-        return HallucinationResult(claims=[], has_hallucination=False)
+        # Fail closed: treat judge failure as a detected hallucination.
+        return HallucinationResult(claims=[], has_hallucination=True)

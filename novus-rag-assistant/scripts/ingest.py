@@ -29,6 +29,10 @@ CHUNK_SIZE = 500   # characters per chunk
 BATCH_SIZE = 20    # embeddings per API call
 CORPUS_DIR = Path(__file__).parent.parent / "corpus"
 
+# Corpus access control: documents that must never be served to external customers.
+# Chunks from these docs are stored with restricted=TRUE and filtered at retrieval time.
+RESTRICTED_DOCS = {"19_internal_agent_guidelines"}
+
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
@@ -81,11 +85,12 @@ def clear_doc(cur, doc_id: str):
 
 
 def insert_chunks(cur, doc_id: str, chunks: list[str], embeddings: list[list[float]]):
+    restricted = doc_id in RESTRICTED_DOCS
     for idx, (text, vec) in enumerate(zip(chunks, embeddings)):
         cur.execute(
-            "INSERT INTO chunks (doc_id, chunk_index, content, embedding) "
-            "VALUES (%s, %s, %s, %s)",
-            (doc_id, idx, text, vec),
+            "INSERT INTO chunks (doc_id, chunk_index, content, embedding, restricted) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (doc_id, idx, text, vec, restricted),
         )
 
 

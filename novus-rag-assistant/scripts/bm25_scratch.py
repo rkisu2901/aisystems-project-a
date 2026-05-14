@@ -64,8 +64,14 @@ def bm25_simple(chunks: list[dict], query: str) -> list[dict]:
 # Smoke test
 # ---------------------------------------------------------------------------
 
-def load_chunks_from_db() -> list[dict]:
-    """Load all chunks from pgvector for offline BM25 testing."""
+def load_chunks_from_db(include_restricted: bool = False) -> list[dict]:
+    """Load chunks from pgvector for offline BM25 scoring.
+
+    Args:
+        include_restricted: If False (default), excludes restricted=TRUE chunks
+            (e.g. internal agent guidelines) from the BM25 candidate pool,
+            keeping corpus access control consistent with the dense retrieval path.
+    """
     from dotenv import load_dotenv
     import psycopg2
 
@@ -77,9 +83,12 @@ def load_chunks_from_db() -> list[dict]:
         password=os.getenv("PG_PASSWORD", "novus123"),
         dbname=os.getenv("PG_DATABASE", "novus_kb"),
     )
+    filter_clause = "" if include_restricted else "WHERE restricted = FALSE"
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT doc_id, chunk_index, content FROM chunks ORDER BY doc_id, chunk_index")
+            cur.execute(
+                f"SELECT doc_id, chunk_index, content FROM chunks {filter_clause} ORDER BY doc_id, chunk_index"
+            )
             rows = cur.fetchall()
     finally:
         conn.close()

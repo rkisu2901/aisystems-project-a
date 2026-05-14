@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Novus Bank — RAG Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+
+    .step-card { transition: all 0.3s ease; }
+
+    .step-card.pending  { opacity: 0.4; }
+    .step-card.active   { opacity: 1; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+    .step-card.done     { opacity: 1; border-color: #10b981; }
+    .step-card.error    { opacity: 1; border-color: #ef4444; }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid #e5e7eb;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .answer-text { white-space: pre-wrap; line-height: 1.75; }
+
+    .chunk-card:hover { background: #f8fafc; }
+
+    .fade-in { animation: fadeIn 0.4s ease forwards; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    #answer-section { display: none; }
+    #steps-section  { display: none; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- Top bar -->
+  <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
+    <div class="max-w-4xl mx-auto px-6 py-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3-3-3z"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-base font-semibold text-slate-800 leading-tight">Novus Bank RAG Assistant</h1>
+        <p class="text-xs text-slate-500">AI-powered policy Q&amp;A</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <span id="health-dot" class="w-2 h-2 rounded-full bg-slate-300"></span>
+        <span id="health-label" class="text-xs text-slate-500">checking…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-6 py-8 space-y-6">
+
+    <!-- Query form -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <h2 class="text-sm font-semibold text-slate-700 mb-4">Ask a question</h2>
+      <div class="space-y-3">
+        <textarea
+          id="query-input"
+          rows="3"
+          placeholder="e.g. What is the UPI daily transaction limit?"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800
+                 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500
+                 focus:border-transparent resize-none transition"
+        ></textarea>
+
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-medium text-slate-600">Mode</label>
+            <select
+              id="mode-select"
+              class="text-sm border border-slate-300 rounded-lg px-3 py-1.5 text-slate-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="dense">Dense (vector search)</option>
+              <option value="hybrid">Hybrid (dense + BM25)</option>
+              <option value="cache">Cache (semantic cache)</option>
+              <option value="router">Router (difficulty-aware)</option>
+            </select>
+          </div>
+
+          <button
+            id="submit-btn"
+            onclick="submitQuery()"
+            class="ml-auto flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700
+                   text-white text-sm font-medium rounded-xl transition disabled:opacity-50
+                   disabled:cursor-not-allowed"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            Ask
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Processing steps -->
+    <section id="steps-section" class="space-y-3">
+      <h2 class="text-sm font-semibold text-slate-700 px-1">Processing pipeline</h2>
+
+      <!-- Step 1: Embed -->
+      <div id="step-embed" class="step-card pending bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-start gap-4">
+        <div class="step-icon mt-0.5">
+          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 7h16M4 12h16M4 17h7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-slate-700">1 · Embed query</span>
+            <div class="step-spinner hidden spinner"></div>
+            <span class="step-check hidden text-green-500 text-base">✓</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">text-embedding-3-small → 1536-dim vector</p>
+          <p class="step-detail text-xs text-slate-400 mt-1 hidden"></p>
+        </div>
+      </div>
+
+      <!-- Step 2: Retrieve -->
+      <div id="step-retrieve" class="step-card pending bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-start gap-4">
+        <div class="step-icon mt-0.5">
+          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-slate-700">2 · Retrieve chunks</span>
+            <div class="step-spinner hidden spinner"></div>
+            <span class="step-check hidden text-green-500 text-base">✓</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">pgvector cosine search — top-5 policy passages</p>
+          <p class="step-detail text-xs text-slate-400 mt-1 hidden"></p>
+        </div>
+      </div>
+
+      <!-- Step 3: Assemble context -->
+      <div id="step-context" class="step-card pending bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-start gap-4">
+        <div class="step-icon mt-0.5">
+          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-slate-700">3 · Assemble context</span>
+            <div class="step-spinner hidden spinner"></div>
+            <span class="step-check hidden text-green-500 text-base">✓</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">Formats retrieved passages as numbered context block</p>
+          <p class="step-detail text-xs text-slate-400 mt-1 hidden"></p>
+        </div>
+      </div>
+
+      <!-- Step 4: Generate -->
+      <div id="step-generate" class="step-card pending bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-start gap-4">
+        <div class="step-icon mt-0.5">
+          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-slate-700">4 · Generate answer</span>
+            <div class="step-spinner hidden spinner"></div>
+            <span class="step-check hidden text-green-500 text-base">✓</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5" id="gen-subtitle">LLM generation via gpt-4o-mini</p>
+          <p class="step-detail text-xs text-slate-400 mt-1 hidden"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Answer section -->
+    <section id="answer-section" class="fade-in space-y-4">
+
+      <!-- Answer card -->
+      <div class="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-slate-700">Answer</h2>
+          <div class="flex items-center gap-2 flex-wrap justify-end">
+            <span id="badge-mode"   class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium"></span>
+            <span id="badge-model"  class="text-xs px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium"></span>
+            <span id="badge-time"   class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium"></span>
+            <span id="badge-cache"  class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium hidden"></span>
+            <span id="badge-trace"  class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-mono hidden"></span>
+          </div>
+        </div>
+        <p id="answer-text" class="answer-text text-slate-800 text-sm leading-relaxed"></p>
+        <button
+          onclick="copyAnswer()"
+          class="mt-3 text-xs text-slate-400 hover:text-slate-600 transition flex items-center gap-1"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          Copy
+        </button>
+      </div>
+
+      <!-- Retrieved chunks -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <button
+          onclick="toggleChunks()"
+          class="w-full flex items-center justify-between px-6 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-2xl transition"
+        >
+          <span>Retrieved chunks <span id="chunk-count" class="text-slate-400 font-normal"></span></span>
+          <svg id="chunks-chevron" class="w-4 h-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        <div id="chunks-body" class="hidden px-6 pb-6 space-y-3">
+          <!-- filled by JS -->
+        </div>
+      </div>
+
+      <!-- Context preview -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <button
+          onclick="toggleContext()"
+          class="w-full flex items-center justify-between px-6 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-2xl transition"
+        >
+          <span>Assembled context</span>
+          <svg id="context-chevron" class="w-4 h-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        <div id="context-body" class="hidden px-6 pb-6">
+          <pre id="context-text" class="text-xs text-slate-600 bg-slate-50 rounded-xl p-4 overflow-auto max-h-72 whitespace-pre-wrap"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Error card -->
+    <div id="error-card" class="hidden fade-in bg-red-50 border border-red-200 rounded-2xl p-5">
+      <p class="text-sm font-medium text-red-700">Request failed</p>
+      <p id="error-msg" class="text-xs text-red-600 mt-1"></p>
+    </div>
+
+  </main>
+
+<script>
+  const API_BASE = window.location.origin;
+
+  // ── health check ──────────────────────────────────────────────────────────
+  async function checkHealth() {
+    try {
+      const r = await fetch(`${API_BASE}/health`);
+      const dot   = document.getElementById('health-dot');
+      const label = document.getElementById('health-label');
+      if (r.ok) {
+        dot.className   = 'w-2 h-2 rounded-full bg-green-500';
+        label.textContent = 'API online';
+        label.className   = 'text-xs text-green-600';
+      } else {
+        throw new Error();
+      }
+    } catch {
+      const dot   = document.getElementById('health-dot');
+      const label = document.getElementById('health-label');
+      dot.className     = 'w-2 h-2 rounded-full bg-red-500';
+      label.textContent = 'API offline';
+      label.className   = 'text-xs text-red-500';
+    }
+  }
+  checkHealth();
+
+  // ── step helpers ──────────────────────────────────────────────────────────
+  const STEP_IDS = ['step-embed', 'step-retrieve', 'step-context', 'step-generate'];
+
+  function setStepState(id, state, detailText) {
+    const card    = document.getElementById(id);
+    const spinner = card.querySelector('.step-spinner');
+    const check   = card.querySelector('.step-check');
+    const detail  = card.querySelector('.step-detail');
+    const icon    = card.querySelector('.step-icon div');
+
+    card.className = card.className.replace(/\b(pending|active|done|error)\b/g, '').trim();
+    card.classList.add('step-card', state);
+
+    if (state === 'active') {
+      spinner.classList.remove('hidden');
+      check.classList.add('hidden');
+      icon.className = icon.className.replace('bg-slate-100', 'bg-blue-100');
+      icon.querySelector('svg').classList.replace('text-slate-400', 'text-blue-500');
+    } else if (state === 'done') {
+      spinner.classList.add('hidden');
+      check.classList.remove('hidden');
+      icon.className = icon.className.replace('bg-blue-100', 'bg-emerald-100').replace('bg-slate-100', 'bg-emerald-100');
+      icon.querySelector('svg').classList.remove('text-slate-400', 'text-blue-500');
+      icon.querySelector('svg').classList.add('text-emerald-500');
+    } else if (state === 'error') {
+      spinner.classList.add('hidden');
+      check.classList.add('hidden');
+    }
+
+    if (detailText) {
+      detail.textContent = detailText;
+      detail.classList.remove('hidden');
+    }
+  }
+
+  function resetSteps() {
+    STEP_IDS.forEach(id => {
+      const card = document.getElementById(id);
+      card.className = 'step-card pending bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-start gap-4';
+      card.querySelector('.step-spinner').classList.add('hidden');
+      card.querySelector('.step-check').classList.add('hidden');
+      card.querySelector('.step-detail').classList.add('hidden');
+      card.querySelector('.step-detail').textContent = '';
+      const icon = card.querySelector('.step-icon div');
+      icon.className = 'w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center';
+      const svg = icon.querySelector('svg');
+      svg.className.baseVal = 'w-4 h-4 text-slate-400';
+    });
+  }
+
+  // ── main submit ───────────────────────────────────────────────────────────
+  async function submitQuery() {
+    const query = document.getElementById('query-input').value.trim();
+    if (!query) { document.getElementById('query-input').focus(); return; }
+
+    const mode = document.getElementById('mode-select').value;
+    const btn  = document.getElementById('submit-btn');
+
+    // reset UI
+    btn.disabled = true;
+    document.getElementById('answer-section').style.display = 'none';
+    document.getElementById('error-card').classList.add('hidden');
+    document.getElementById('steps-section').style.display = 'block';
+    resetSteps();
+
+    // animate steps while waiting
+    const delays = [0, 400, 900, 1500];
+    STEP_IDS.forEach((id, i) => setTimeout(() => setStepState(id, 'active'), delays[i]));
+
+    try {
+      const resp = await fetch(`${API_BASE}/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, mode })
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        throw new Error(err.detail || resp.statusText);
+      }
+
+      const data = await resp.json();
+      populateResults(data, mode);
+
+    } catch (e) {
+      STEP_IDS.forEach(id => setStepState(id, 'error'));
+      document.getElementById('error-card').classList.remove('hidden');
+      document.getElementById('error-msg').textContent = e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function populateResults(data, mode) {
+    // mark all steps done with real data
+    setStepState('step-embed',    'done', `Query embedded → 1536-dim vector`);
+    setStepState('step-retrieve', 'done',
+      `Retrieved ${data.retrieved_chunks?.length ?? '?'} chunk(s) via ${data.retrieval_mode}`);
+
+    const ctxLen = data.context?.length ?? 0;
+    setStepState('step-context', 'done', `Context assembled — ${ctxLen} chars`);
+
+    // retrieval_mode === 'cache' + elapsed < 0.5s is a reliable cache-hit signal
+    const cacheHit = data.retrieval_mode === 'cache' && data.cache_similarity != null && data.elapsed_seconds < 0.5;
+    setStepState('step-generate', 'done',
+      cacheHit
+        ? `Cache hit — similarity ${(data.cache_similarity * 100).toFixed(1)}% (skipped LLM call)`
+        : `Generated by ${data.model_used} in ${data.elapsed_seconds.toFixed(2)}s`);
+
+    // gen subtitle
+    document.getElementById('gen-subtitle').textContent =
+      `${data.model_used} · temp 0.1`;
+
+    // badges
+    document.getElementById('badge-mode').textContent   = data.retrieval_mode;
+    document.getElementById('badge-model').textContent  = data.model_used;
+    document.getElementById('badge-time').textContent   = `${data.elapsed_seconds.toFixed(2)}s`;
+
+    const cacheBadge = document.getElementById('badge-cache');
+    if (data.cache_similarity != null) {
+      cacheBadge.textContent = `cache sim ${(data.cache_similarity * 100).toFixed(1)}%`;
+      cacheBadge.classList.remove('hidden');
+    } else {
+      cacheBadge.classList.add('hidden');
+    }
+
+    const traceBadge = document.getElementById('badge-trace');
+    if (data.trace_id) {
+      traceBadge.textContent = `trace: ${data.trace_id.slice(0, 8)}…`;
+      traceBadge.classList.remove('hidden');
+    } else {
+      traceBadge.classList.add('hidden');
+    }
+
+    // answer
+    document.getElementById('answer-text').textContent = data.answer;
+
+    // chunks
+    const chunksBody = document.getElementById('chunks-body');
+    chunksBody.innerHTML = '';
+    document.getElementById('chunk-count').textContent =
+      `(${data.retrieved_chunks?.length ?? 0})`;
+
+    (data.retrieved_chunks || []).forEach((chunk, i) => {
+      const sim = chunk.similarity != null
+        ? `${(chunk.similarity * 100).toFixed(1)}%`
+        : '';
+      const div = document.createElement('div');
+      div.className = 'chunk-card border border-slate-200 rounded-xl p-4 cursor-default transition';
+      div.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+            #${i + 1} · ${escHtml(chunk.doc_id ?? '')}
+          </span>
+          <span class="text-xs text-slate-400 font-medium">${sim ? 'similarity ' + sim : ''}</span>
+        </div>
+        <p class="text-xs text-slate-600 leading-relaxed">${escHtml(chunk.content ?? '')}</p>`;
+      chunksBody.appendChild(div);
+    });
+
+    // context
+    document.getElementById('context-text').textContent = data.context ?? '';
+
+    // show section
+    document.getElementById('answer-section').style.display = 'block';
+  }
+
+  // ── toggles ───────────────────────────────────────────────────────────────
+  function toggleChunks() {
+    const body    = document.getElementById('chunks-body');
+    const chevron = document.getElementById('chunks-chevron');
+    const open    = body.classList.toggle('hidden');
+    chevron.style.transform = open ? '' : 'rotate(180deg)';
+  }
+
+  function toggleContext() {
+    const body    = document.getElementById('context-body');
+    const chevron = document.getElementById('context-chevron');
+    const open    = body.classList.toggle('hidden');
+    chevron.style.transform = open ? '' : 'rotate(180deg)';
+  }
+
+  // ── utils ─────────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function copyAnswer() {
+    const text = document.getElementById('answer-text').textContent;
+    await navigator.clipboard.writeText(text).catch(() => {});
+  }
+
+  // submit on Ctrl/Cmd + Enter
+  document.getElementById('query-input').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submitQuery();
+  });
+</script>
+</body>
+</html>

@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS chunks (
     doc_id      TEXT    NOT NULL,          -- e.g. "03_debit_card_policy"
     chunk_index INTEGER NOT NULL,          -- 0-based position within the doc
     content     TEXT    NOT NULL,
-    embedding   vector(1536)               -- text-embedding-3-small dimensionality
+    embedding   vector(1536),              -- text-embedding-3-small dimensionality
+    restricted  BOOLEAN NOT NULL DEFAULT FALSE  -- corpus access control: TRUE = internal-only
 );
 
 -- HNSW index: fast approximate nearest-neighbour search.
@@ -28,6 +29,12 @@ CREATE INDEX IF NOT EXISTS chunks_embedding_hnsw
     ON chunks
     USING hnsw (embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64);
+"""
+
+# Idempotent migration: adds the column to tables created before this change.
+MIGRATION_DDL = """
+ALTER TABLE chunks
+    ADD COLUMN IF NOT EXISTS restricted BOOLEAN NOT NULL DEFAULT FALSE;
 """
 
 
@@ -42,8 +49,9 @@ def setup():
     conn.autocommit = True
     with conn.cursor() as cur:
         cur.execute(DDL)
+        cur.execute(MIGRATION_DDL)
     conn.close()
-    print("✅  Schema ready: extension=vector, table=chunks, index=hnsw")
+    print("✅  Schema ready: extension=vector, table=chunks, index=hnsw, column=restricted")
 
 
 if __name__ == "__main__":

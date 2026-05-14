@@ -150,20 +150,31 @@ def embed_query(query: str) -> list[float]:
 # ---------------------------------------------------------------------------
 
 @observe()
-def retrieve(query_embedding: list[float], top_k: int = TOP_K) -> list[dict[str, Any]]:
+def retrieve(
+    query_embedding: list[float],
+    top_k: int = TOP_K,
+    include_restricted: bool = False,
+) -> list[dict[str, Any]]:
     """Cosine similarity search over pgvector chunks table.
 
     Returns top_k chunks sorted by similarity descending.
     Each result dict: {id, doc_id, chunk_index, content, similarity}
+
+    Args:
+        include_restricted: If False (default), filters out chunks from
+            documents tagged restricted=TRUE at ingest time (e.g. internal
+            agent guidelines). Set True only for internal/admin pipelines.
     """
+    filter_clause = "" if include_restricted else "WHERE restricted = FALSE"
     conn = get_conn()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT doc_id, chunk_index, content,
                        1 - (embedding <=> %s::vector) AS similarity
                 FROM chunks
+                {filter_clause}
                 ORDER BY embedding <=> %s::vector
                 LIMIT %s
                 """,
@@ -190,7 +201,12 @@ def retrieve(query_embedding: list[float], top_k: int = TOP_K) -> list[dict[str,
 # ---------------------------------------------------------------------------
 
 @observe()
-def hybrid_retrieve(query: str, query_embedding: list[float], top_k: int = TOP_K) -> list[dict[str, Any]]:
+def hybrid_retrieve(
+    query: str,
+    query_embedding: list[float],
+    top_k: int = TOP_K,
+    include_restricted: bool = False,
+) -> list[dict[str, Any]]:
     """Hybrid retrieval: dense cosine search + BM25 keyword search, merged via RRF.
 
     Step 1: Dense retrieval — top-k*2 chunks from pgvector.
@@ -200,19 +216,22 @@ def hybrid_retrieve(query: str, query_embedding: list[float], top_k: int = TOP_K
 
     Why 2x for dense: RRF needs a wider candidate pool from the dense side so
     that documents present in BM25 but ranked lower in dense can still surface.
+
+    Args:
+        include_restricted: Passed through to retrieve() and load_chunks_from_db().
+            False (default) = customer-facing; True = internal/admin pipeline.
     """
     from scripts.bm25_scratch import bm25_simple, load_chunks_from_db
     from scripts.rrf_scratch import reciprocal_rank_fusion
 
-    # Dense candidates (2x pool for RRF)
-    dense_results = retrieve(query_embedding, top_k=top_k * 2)
+    # Dense candidates (2x pool for RRF), respecting access control
+    dense_results = retrieve(query_embedding, top_k=top_k * 2, include_restricted=include_restricted)
 
-    # BM25 over all chunks (offline — no extra embedding cost)
-    all_chunks = load_chunks_from_db()
+    # BM25 over all eligible chunks (offline — no extra embedding cost)
+    all_chunks = load_chunks_from_db(include_restricted=include_restricted)
     bm25_results = bm25_simple(all_chunks, query)[: top_k * 2]
 
     if not bm25_results:
-        # If BM25 finds nothing, fall back to dense-only
         return dense_results[:top_k]
 
     fused = reciprocal_rank_fusion(dense_results, bm25_results, k=60)
@@ -235,6 +254,39 @@ def assemble_context(chunks: list[dict[str, Any]]) -> str:
         )
     return "\n\n---\n\n".join(parts)
 
+
+# ---------------------------------------------------------------------------
+# Week 4 — Input guardrail (G1.1 + G1.2, opt-in via use_guardrail=True)
+# ---------------------------------------------------------------------------
+
+try:
+    from scripts.input_guardrail import check_input as _check_input
+    INPUT_GUARDRAIL_AVAILABLE = True
+except ImportError:
+    INPUT_GUARDRAIL_AVAILABLE = False
+
+# ---------------------------------------------------------------------------
+# Week 4 — Output guardrail (O2.1, opt-in via use_output_guardrail=True)
+# ---------------------------------------------------------------------------
+
+try:
+    from scripts.output_guardrail import check_hallucination as _check_hallucination
+    from scripts.output_guardrail import FALLBACK_ANSWER as _GUARDRAIL_FALLBACK
+    OUTPUT_GUARDRAIL_AVAILABLE = True
+except ImportError:
+    OUTPUT_GUARDRAIL_AVAILABLE = False
+
+# Stricter system prompt used on the retry generation pass when the first
+# answer fails the hallucination check. Forces the model to cite or abstain.
+_STRICT_SYSTEM_PROMPT = """You are Novus Assist, the AI knowledge assistant for Novus Bank.
+
+CRITICAL ACCURACY REQUIREMENT: Use ONLY information word-for-word present in the context.
+Do NOT paraphrase, infer, or extrapolate beyond what is explicitly stated.
+If an exact figure (amount, percentage, date) is not present in the context, say:
+"I don't have that specific information in the Novus Bank knowledge base."
+Every numerical claim must be a direct quote from context.
+For urgent issues (fraud, account compromise), always include: "Call 1800-NOVUS immediately."
+"""
 
 # ---------------------------------------------------------------------------
 # Week 4 — PII anonymizer (P3.2, opt-in)
@@ -319,19 +371,21 @@ def generate_with_confidence(
 # ---------------------------------------------------------------------------
 
 @observe()
-def generate(query: str, context: str, model: str | None = None) -> str:
+def generate(query: str, context: str, model: str | None = None, _strict: bool = False) -> str:
     """Call the LLM with the assembled context to produce a grounded answer.
 
     Args:
-        model: Override the chat model (e.g. "gpt-4o" for complex queries via
-               the model router). Defaults to CHAT_MODEL if None.
+        model:   Override the chat model. Defaults to CHAT_MODEL if None.
+        _strict: If True, use _STRICT_SYSTEM_PROMPT for the retry pass after a
+                 hallucination is detected. Not intended for direct callers.
 
     Uses LiteLLM if installed (enables model-agnostic fallback).
     Falls back to raw OpenAI SDK if LiteLLM is not available.
     """
     selected_model = model or CHAT_MODEL
+    system_prompt = _STRICT_SYSTEM_PROMPT if _strict else SYSTEM_PROMPT
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"},
     ]
 
@@ -365,37 +419,73 @@ def ask(
     use_router: bool = False,
     use_confidence: bool = False,
     use_anonymizer: bool = False,
+    use_guardrail: bool = False,
+    use_output_guardrail: bool = False,
+    guardrail_sample_rate: float = 1.0,
+    include_restricted: bool = False,
 ) -> dict[str, Any]:
     """End-to-end RAG call. Returns a result dict suitable for eval harness.
 
     Args:
-        query:          Customer question.
-        top_k:          Number of chunks to retrieve.
-        use_hybrid:     If True, use hybrid_retrieve (BM25 + dense + RRF).
-        use_cache:      If True, check SemanticCache before embedding/retrieving.
-                        Cache is a module-level singleton (_cache). Eval harness
-                        leaves this False so results stay deterministic.
-        use_router:     If True, run LLM difficulty classifier to select gpt-4o
-                        (complex) vs gpt-4o-mini (simple) for generation.
-        use_confidence: If True, use generate_with_confidence() — returns a
-                        confidence score and replaces LOW-confidence answers with
-                        HANDOFF_MESSAGE. Defaults False so eval harness is unaffected.
+        query:                Customer question.
+        top_k:                Number of chunks to retrieve.
+        use_hybrid:           If True, use hybrid_retrieve (BM25 + dense + RRF).
+        use_cache:            If True, check SemanticCache before embedding/retrieving.
+        use_router:           If True, run LLM difficulty classifier to select gpt-4o vs mini.
+        use_confidence:       If True, use generate_with_confidence() — LOW confidence → HANDOFF.
+        use_anonymizer:       If True, PiiAnonymizer strips/restores PII around LLM calls.
+        use_guardrail:        If True, run input guardrail (topic + safety) before any LLM call.
+                              Blocked queries return immediately with refusal; no retrieval runs.
+        use_output_guardrail: If True, run hallucination check after generation. On detection,
+                              retries once with a stricter prompt; falls back to safe message
+                              if the retry also fails.
+        guardrail_sample_rate: Fraction of queries to check with output guardrail (0.0–1.0).
+                              1.0 = always-on (banking/finance default); 0.1 = 10% sampling.
+        include_restricted:   If True, retrieval includes restricted=TRUE corpus chunks
+                              (internal agent guidelines). Default False = customer-facing.
 
     Result keys:
-        query               — original question
-        answer              — LLM-generated answer (or HANDOFF_MESSAGE if LOW)
-        retrieved_chunks    — list of chunk dicts (empty on cache hit)
-        context             — assembled context string (empty on cache hit)
-        retrieval_mode      — "hybrid", "dense", or "cache_hit"
-        model_used          — which chat model generated the answer
-        cache_similarity    — cosine sim of cache hit (None if miss)
-        confidence           — "high"/"medium"/"low"/"unknown" (None if use_confidence=False)
-        confidence_reasoning — one-sentence reason for confidence level (None if disabled)
+        query                — original question
+        answer               — LLM-generated answer (or HANDOFF_MESSAGE if LOW / blocked)
+        retrieved_chunks     — list of chunk dicts (empty on cache hit or guardrail block)
+        context              — assembled context string
+        retrieval_mode       — "hybrid", "dense", "cache_hit", or "blocked"
+        model_used           — which chat model generated the answer
+        cache_similarity     — cosine sim of cache hit (None if miss)
+        confidence           — "high"/"medium"/"low"/"unknown" (None if disabled)
+        confidence_reasoning — one-sentence reason (None if disabled)
         pii_redacted         — True if PII was detected and anonymized (None if disabled)
+        guardrail_blocked    — True if input guardrail blocked the query (None if disabled)
+        guardrail_reason     — reason string from input guardrail (None if not blocked)
+        hallucination_detected — True if output guardrail fired (None if disabled/not sampled)
         trace_id             — LangFuse trace ID (None if not configured)
         elapsed_seconds      — wall-clock time for the full pipeline
     """
     t0 = time.time()
+
+    # --- Input guardrail (G1.1 + G1.2): block before any embedding or LLM call ---
+    if use_guardrail and INPUT_GUARDRAIL_AVAILABLE:
+        safe, reason = _check_input(query)
+        if not safe:
+            return {
+                "query":                query,
+                "answer":               f"I'm sorry, I can't help with that. {reason}",
+                "retrieved_chunks":     [],
+                "context":              "",
+                "retrieval_mode":       "blocked",
+                "model_used":           "input_guardrail",
+                "cache_similarity":     None,
+                "difficulty_score":     None,
+                "confidence":           None,
+                "confidence_reasoning": None,
+                "ticket":               None,
+                "pii_redacted":         None,
+                "guardrail_blocked":    True,
+                "guardrail_reason":     reason,
+                "hallucination_detected": None,
+                "trace_id":             langfuse_context.get_current_trace_id() if LANGFUSE_ENABLED else None,
+                "elapsed_seconds":      round(time.time() - t0, 2),
+            }
 
     # --- PII anonymization (P3.2): anonymize before ANY LLM call ---
     anonymizer  = None
@@ -412,28 +502,31 @@ def ask(
         if hit:
             trace_id = langfuse_context.get_current_trace_id() if LANGFUSE_ENABLED else None
             return {
-                "query":                query,
-                "answer":               hit["answer"],
-                "retrieved_chunks":     [],
-                "context":              "",
-                "retrieval_mode":       "cache_hit",
-                "model_used":           "cache",
-                "cache_similarity":     hit["cache_similarity"],
-                "difficulty_score":     None,
-                "confidence":           None,
-                "confidence_reasoning": None,
-                "ticket":               None,
-                "pii_redacted":         None,
-                "trace_id":             trace_id,
-                "elapsed_seconds":      round(time.time() - t0, 2),
+                "query":                  query,
+                "answer":                 hit["answer"],
+                "retrieved_chunks":       [],
+                "context":                "",
+                "retrieval_mode":         "cache_hit",
+                "model_used":             "cache",
+                "cache_similarity":       hit["cache_similarity"],
+                "difficulty_score":       None,
+                "confidence":             None,
+                "confidence_reasoning":   None,
+                "ticket":                 None,
+                "pii_redacted":           None,
+                "guardrail_blocked":      False,
+                "guardrail_reason":       None,
+                "hallucination_detected": None,
+                "trace_id":               trace_id,
+                "elapsed_seconds":        round(time.time() - t0, 2),
             }
 
-    # --- Retrieval ---
+    # --- Retrieval (respects corpus access control) ---
     if use_hybrid:
-        chunks = hybrid_retrieve(query, query_vec, top_k=top_k)
+        chunks = hybrid_retrieve(query, query_vec, top_k=top_k, include_restricted=include_restricted)
         retrieval_mode = "hybrid"
     else:
-        chunks = retrieve(query_vec, top_k=top_k)
+        chunks = retrieve(query_vec, top_k=top_k, include_restricted=include_restricted)
         retrieval_mode = "dense"
 
     context = assemble_context(chunks)
@@ -453,6 +546,25 @@ def ask(
         raw_answer = generate(clean_query, context, model=routed_model)
         confidence = None
         confidence_reasoning = None
+
+    # --- Output guardrail (O2.1): hallucination check with one strict retry ---
+    import random
+    hallucination_detected = None
+    if (
+        use_output_guardrail
+        and OUTPUT_GUARDRAIL_AVAILABLE
+        and random.random() < guardrail_sample_rate
+    ):
+        result_og = _check_hallucination(raw_answer, context)
+        if result_og.has_hallucination:
+            # Retry once with a stricter system prompt
+            raw_answer = generate(clean_query, context, model=routed_model, _strict=True)
+            result_og2 = _check_hallucination(raw_answer, context)
+            if result_og2.has_hallucination:
+                raw_answer = _GUARDRAIL_FALLBACK
+            hallucination_detected = True
+        else:
+            hallucination_detected = False
 
     # --- Restore PII in the answer ---
     answer = anonymizer.restore(raw_answer) if anonymizer else raw_answer
@@ -486,20 +598,23 @@ def ask(
     trace_id = langfuse_context.get_current_trace_id() if LANGFUSE_ENABLED else None
 
     return {
-        "query":                query,         # original — do NOT log if pii_redacted=True
-        "answer":               answer,
-        "retrieved_chunks":     chunks,
-        "context":              context,
-        "retrieval_mode":       retrieval_mode,
-        "model_used":           routed_model,
-        "cache_similarity":     None,
-        "difficulty_score":     difficulty_score,
-        "confidence":           confidence,
-        "confidence_reasoning": confidence_reasoning,
-        "ticket":               ticket,        # SupportTicket | None (S4.1, only on LOW)
-        "pii_redacted":         pii_redacted,
-        "trace_id":             trace_id,
-        "elapsed_seconds":      round(time.time() - t0, 2),
+        "query":                  query,         # original — do NOT log if pii_redacted=True
+        "answer":                 answer,
+        "retrieved_chunks":       chunks,
+        "context":                context,
+        "retrieval_mode":         retrieval_mode,
+        "model_used":             routed_model,
+        "cache_similarity":       None,
+        "difficulty_score":       difficulty_score,
+        "confidence":             confidence,
+        "confidence_reasoning":   confidence_reasoning,
+        "ticket":                 ticket,        # SupportTicket | None (S4.1, only on LOW)
+        "pii_redacted":           pii_redacted,
+        "guardrail_blocked":      False,
+        "guardrail_reason":       None,
+        "hallucination_detected": hallucination_detected,
+        "trace_id":               trace_id,
+        "elapsed_seconds":        round(time.time() - t0, 2),
     }
 
 

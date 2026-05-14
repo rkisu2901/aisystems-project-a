@@ -2,6 +2,7 @@
 api.py — FastAPI wrapper for the Novus Bank RAG pipeline (D1.1).
 
 Endpoints:
+    GET  /        — Serves the web UI (frontend/index.html)
     GET  /health  — ALB health check → {"status": "ok"}
     POST /query   — RAG query       → {"answer": str, "trace_id": str|null, "model_used": str, ...}
     POST /ingest  — Corpus ingest   → {"status": "done", "elapsed_seconds": float}
@@ -21,6 +22,7 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -58,6 +60,14 @@ class IngestResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+_FRONTEND = Path(__file__).parent / "frontend" / "index.html"
+
+
+@app.get("/")
+def frontend():
+    return FileResponse(_FRONTEND)
+
 
 @app.get("/health")
 def health():
