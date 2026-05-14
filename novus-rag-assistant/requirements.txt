@@ -20,3 +20,4 @@ instructor         # O2.2/S4.1: structured output via Pydantic + instructor (v1 
 presidio-analyzer  # P3.1–P3.3: PII detection engine
 presidio-anonymizer  # P3.1–P3.3: companion to presidio-analyzer
 spacy              # required by presidio for NER (PERSON, LOCATION)
+cohere>=4.0,<5.0   # Cohere reranker: rerank-english-v3.0 (opt-in via use_reranker=True)

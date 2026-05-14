@@ -89,6 +89,18 @@
             </select>
           </div>
 
+          <label class="flex items-center gap-1.5 cursor-pointer select-none group">
+            <input
+              type="checkbox"
+              id="reranker-toggle"
+              class="w-3.5 h-3.5 rounded accent-violet-600 cursor-pointer"
+            />
+            <span class="text-xs font-medium text-slate-600 group-hover:text-slate-800 transition">
+              Reranker
+            </span>
+            <span class="text-xs px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 font-medium">Cohere</span>
+          </label>
+
           <button
             id="submit-btn"
             onclick="submitQuery()"
@@ -265,7 +277,9 @@
   </main>
 
 <script>
-  const API_BASE = window.location.origin;
+  const API_BASE = (window.location.origin && window.location.origin !== 'null')
+    ? window.location.origin
+    : 'http://localhost:8080';
 
   // ── health check ──────────────────────────────────────────────────────────
   async function checkHealth() {
@@ -345,8 +359,9 @@
     const query = document.getElementById('query-input').value.trim();
     if (!query) { document.getElementById('query-input').focus(); return; }
 
-    const mode = document.getElementById('mode-select').value;
-    const btn  = document.getElementById('submit-btn');
+    const mode        = document.getElementById('mode-select').value;
+    const useReranker = document.getElementById('reranker-toggle').checked;
+    const btn         = document.getElementById('submit-btn');
 
     // reset UI
     btn.disabled = true;
@@ -363,7 +378,7 @@
       const resp = await fetch(`${API_BASE}/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, mode })
+        body: JSON.stringify({ query, mode, use_reranker: useReranker })
       });
 
       if (!resp.ok) {
@@ -386,8 +401,10 @@
   function populateResults(data, mode) {
     // mark all steps done with real data
     setStepState('step-embed',    'done', `Query embedded → 1536-dim vector`);
+    const reranked = data.retrieval_mode?.includes('+reranked');
     setStepState('step-retrieve', 'done',
-      `Retrieved ${data.retrieved_chunks?.length ?? '?'} chunk(s) via ${data.retrieval_mode}`);
+      `Retrieved ${data.retrieved_chunks?.length ?? '?'} chunk(s) via ${data.retrieval_mode}` +
+      (reranked ? ' · reranked via Cohere' : ''));
 
     const ctxLen = data.context?.length ?? 0;
     setStepState('step-context', 'done', `Context assembled — ${ctxLen} chars`);
@@ -434,9 +451,14 @@
       `(${data.retrieved_chunks?.length ?? 0})`;
 
     (data.retrieved_chunks || []).forEach((chunk, i) => {
-      const sim = chunk.similarity != null
-        ? `${(chunk.similarity * 100).toFixed(1)}%`
-        : '';
+      let scoreLabel = '';
+      let scoreBadgeClass = 'text-xs text-slate-400 font-medium';
+      if (chunk.rerank_score != null) {
+        scoreLabel = `rerank ${chunk.rerank_score.toFixed(4)}`;
+        scoreBadgeClass = 'text-xs text-violet-600 font-medium bg-violet-50 px-1.5 py-0.5 rounded-full';
+      } else if (chunk.similarity != null) {
+        scoreLabel = `similarity ${(chunk.similarity * 100).toFixed(1)}%`;
+      }
       const div = document.createElement('div');
       div.className = 'chunk-card border border-slate-200 rounded-xl p-4 cursor-default transition';
       div.innerHTML = `
@@ -444,7 +466,7 @@
           <span class="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
             #${i + 1} · ${escHtml(chunk.doc_id ?? '')}
           </span>
-          <span class="text-xs text-slate-400 font-medium">${sim ? 'similarity ' + sim : ''}</span>
+          <span class="${scoreBadgeClass}">${scoreLabel}</span>
         </div>
         <p class="text-xs text-slate-600 leading-relaxed">${escHtml(chunk.content ?? '')}</p>`;
       chunksBody.appendChild(div);

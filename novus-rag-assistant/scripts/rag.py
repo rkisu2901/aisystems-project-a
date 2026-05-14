@@ -247,13 +247,24 @@ def assemble_context(chunks: list[dict[str, Any]]) -> str:
     """Format retrieved chunks into a numbered context block for the LLM."""
     parts = []
     for i, chunk in enumerate(chunks, 1):
-        sim = f"similarity: {chunk['similarity']:.3f}" if "similarity" in chunk else "keyword match"
+        if "rerank_score" in chunk:
+            score_label = f"rerank: {chunk['rerank_score']:.4f}"
+        elif "similarity" in chunk:
+            score_label = f"similarity: {chunk['similarity']:.3f}"
+        else:
+            score_label = "keyword match"
         parts.append(
-            f"[{i}] Source: {chunk['doc_id']} ({sim})\n"
+            f"[{i}] Source: {chunk['doc_id']} ({score_label})\n"
             f"{chunk['content']}"
         )
     return "\n\n---\n\n".join(parts)
 
+
+# ---------------------------------------------------------------------------
+# Cohere reranker (opt-in via use_reranker=True)
+# ---------------------------------------------------------------------------
+
+from scripts.reranker import cohere_rerank, COHERE_AVAILABLE as _COHERE_AVAILABLE
 
 # ---------------------------------------------------------------------------
 # Week 4 — Input guardrail (G1.1 + G1.2, opt-in via use_guardrail=True)
@@ -419,6 +430,7 @@ def ask(
     use_router: bool = False,
     use_confidence: bool = False,
     use_anonymizer: bool = False,
+    use_reranker: bool = False,
     use_guardrail: bool = False,
     use_output_guardrail: bool = False,
     guardrail_sample_rate: float = 1.0,
@@ -434,6 +446,9 @@ def ask(
         use_router:           If True, run LLM difficulty classifier to select gpt-4o vs mini.
         use_confidence:       If True, use generate_with_confidence() — LOW confidence → HANDOFF.
         use_anonymizer:       If True, PiiAnonymizer strips/restores PII around LLM calls.
+        use_reranker:         If True, re-rank retrieved chunks via Cohere rerank-english-v3.0
+                              before context assembly. Requires COHERE_API_KEY. Degrades
+                              gracefully to no-op if cohere package or key is absent.
         use_guardrail:        If True, run input guardrail (topic + safety) before any LLM call.
                               Blocked queries return immediately with refusal; no retrieval runs.
         use_output_guardrail: If True, run hallucination check after generation. On detection,
@@ -528,6 +543,12 @@ def ask(
     else:
         chunks = retrieve(query_vec, top_k=top_k, include_restricted=include_restricted)
         retrieval_mode = "dense"
+
+    # --- Cohere reranker (optional): re-scores chunks with cross-encoder ---
+    if use_reranker:
+        chunks = cohere_rerank(clean_query, chunks, top_n=top_k)
+        if retrieval_mode != "cache_hit":
+            retrieval_mode = retrieval_mode + "+reranked"
 
     context = assemble_context(chunks)
 
