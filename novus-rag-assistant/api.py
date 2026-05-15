@@ -27,7 +27,9 @@ from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from scripts.rag import ask, _cache as _rag_cache
+from scripts.rag import ask, _cache as _rag_cache, LANGFUSE_ENABLED
+if LANGFUSE_ENABLED:
+    from langfuse.decorators import langfuse_context
 
 app = FastAPI(title="Novus Bank RAG API", version="1.0.0")
 
@@ -110,6 +112,12 @@ def query(req: QueryRequest):
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+    finally:
+        if LANGFUSE_ENABLED:
+            try:
+                langfuse_context.flush()
+            except Exception:
+                pass
 
     ticket = result.get("ticket")
     return QueryResponse(
