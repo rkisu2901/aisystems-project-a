@@ -3,449 +3,702 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Novus Bank — RAG Assistant</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Novus RAG Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Mulish:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    body { font-family: 'Inter', sans-serif; }
+    :root {
+      --bg:           #06080E;
+      --surface:      #0D1320;
+      --surface2:     #111A2E;
+      --border:       #1A2540;
+      --border-hi:    #263550;
+      --gold:         #E6B44A;
+      --gold-dim:     rgba(230,180,74,0.12);
+      --gold-glow:    rgba(230,180,74,0.25);
+      --green:        #2ECC71;
+      --green-dim:    rgba(46,204,113,0.12);
+      --red:          #E74C3C;
+      --red-dim:      rgba(231,76,60,0.12);
+      --blue:         #4A9EFF;
+      --blue-dim:     rgba(74,158,255,0.12);
+      --purple:       #9B77FF;
+      --purple-dim:   rgba(155,119,255,0.12);
+      --orange:       #FF8C42;
+      --amber:        #F5A623;
+      --amber-dim:    rgba(245,166,35,0.12);
+      --text:         #E8ECF2;
+      --text-dim:     #8B9BB4;
+      --text-dimmer:  #3D4F6A;
+      --font-d: 'Playfair Display', Georgia, serif;
+      --font-m: 'IBM Plex Mono', monospace;
+      --font-b: 'Mulish', sans-serif;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
-    .step-card { transition: all 0.3s ease; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-b);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
 
-    .step-card.pending  { opacity: 0.4; }
-    .step-card.active   { opacity: 1; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
-    .step-card.done     { opacity: 1; border-color: #10b981; }
-    .step-card.error    { opacity: 1; border-color: #ef4444; }
+    /* Background atmosphere */
+    body::before {
+      content:'';
+      position:fixed; inset:0; pointer-events:none; z-index:0;
+      background:
+        radial-gradient(ellipse 55% 45% at 10% 70%, rgba(74,158,255,0.05) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 90% 15%, rgba(230,180,74,0.04) 0%, transparent 55%),
+        radial-gradient(ellipse 40% 35% at 50% 90%, rgba(155,119,255,0.03) 0%, transparent 50%);
+    }
+    body::after {
+      content:'';
+      position:fixed; inset:0; pointer-events:none; z-index:0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.032) 1px, transparent 1px);
+      background-size: 30px 30px;
+    }
+
+    /* Top progress bar */
+    #progress-bar {
+      position:fixed; top:0; left:0; height:2px; width:0%; z-index:999;
+      background: linear-gradient(90deg, var(--blue), #fff8, var(--blue));
+      background-size: 200% 100%;
+      transition: width 0.3s ease;
+      animation: shimmer-bar 1.2s linear infinite;
+    }
+    @keyframes shimmer-bar {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .wrap { max-width:1240px; margin:0 auto; padding:0 24px; position:relative; z-index:1; }
+
+    /* Header */
+    header {
+      position:sticky; top:0; z-index:100;
+      background: rgba(6,8,14,0.88);
+      backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--border);
+    }
+    .hdr {
+      display:flex; align-items:center; gap:14px;
+      padding:14px 24px; max-width:1240px; margin:0 auto;
+    }
+    .brand-gem {
+      width:36px; height:36px; border-radius:9px; flex-shrink:0;
+      background: linear-gradient(135deg, var(--blue) 0%, #1A4A8A 100%);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .brand-name { font-family:var(--font-d); font-size:17px; font-weight:700; letter-spacing:-0.02em; }
+    .brand-sub  { font-family:var(--font-m); font-size:10px; color:var(--text-dim); letter-spacing:0.12em; text-transform:uppercase; margin-top:1px; }
+    .hdr-right  { margin-left:auto; display:flex; align-items:center; gap:20px; }
+
+    .live-dot {
+      width:8px; height:8px; border-radius:50%; background:var(--green);
+      box-shadow:0 0 0 0 rgba(46,204,113,0.5);
+      animation: live-pulse 2s infinite;
+    }
+    .live-dot.offline { background:var(--red); animation:none; box-shadow:none; }
+    @keyframes live-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(46,204,113,0.5); }
+      70%  { box-shadow: 0 0 0 8px rgba(46,204,113,0); }
+      100% { box-shadow: 0 0 0 0 rgba(46,204,113,0); }
+    }
+    .live-label { font-family:var(--font-m); font-size:11px; color:var(--text-dim); }
+    .ts-label   { font-family:var(--font-m); font-size:10px; color:var(--text-dimmer); }
+
+    /* Cards */
+    .card {
+      background:var(--surface); border:1px solid var(--border); border-radius:16px;
+      transition: border-color 0.25s;
+    }
+    .card:hover { border-color:var(--border-hi); }
+
+    main { padding:28px 0 80px; }
+    .sec  { margin-bottom:28px; }
+    .sec-hdr {
+      display:flex; align-items:center; gap:10px;
+      margin-bottom:14px;
+    }
+    .sec-tag {
+      font-family:var(--font-m); font-size:10px; letter-spacing:0.14em;
+      text-transform:uppercase; color:var(--blue);
+    }
+    .sec-tag.gold { color:var(--gold); }
+    .sec-line { flex:1; height:1px; background:linear-gradient(to right, var(--border-hi), transparent); }
+    .sec-action {
+      font-family:var(--font-m); font-size:10px; letter-spacing:0.06em;
+      padding:3px 12px; border-radius:6px; border:1px solid var(--border);
+      background:none; color:var(--text-dimmer); cursor:pointer;
+      transition:all 0.15s;
+    }
+    .sec-action:hover { border-color:var(--gold); color:var(--gold); }
+    .sec-action.danger:hover { border-color:var(--red); color:var(--red); }
+
+    /* Query form */
+    .q-card { padding:24px 28px; }
+    .q-area {
+      width:100%; background:rgba(255,255,255,0.025);
+      border:1px solid var(--border); border-radius:12px;
+      padding:15px 18px; color:var(--text); font-family:var(--font-b);
+      font-size:15px; resize:none; outline:none; line-height:1.65;
+      transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    .q-area::placeholder { color:var(--text-dimmer); }
+    .q-area:focus { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-dim); }
+
+    .q-foot { display:flex; align-items:center; gap:8px; margin-top:14px; flex-wrap:wrap; }
+    .q-try  { font-family:var(--font-m); font-size:10px; color:var(--text-dimmer); letter-spacing:0.06em; }
+    .chip {
+      font-size:12px; font-weight:600; padding:5px 14px; border-radius:20px;
+      border:1px solid var(--border); color:var(--text-dim); background:none;
+      cursor:pointer; transition:all 0.15s; font-family:var(--font-b);
+    }
+    .chip:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-dim); }
+
+    /* Controls row */
+    .ctrl-row { display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap; }
+    .ctrl-label { font-family:var(--font-m); font-size:10px; color:var(--text-dimmer); letter-spacing:0.08em; text-transform:uppercase; }
+
+    .mode-sel {
+      font-family:var(--font-m); font-size:12px;
+      background:rgba(255,255,255,0.04); border:1px solid var(--border);
+      color:var(--text-dim); border-radius:8px; padding:6px 10px;
+      outline:none; cursor:pointer; transition:border-color 0.15s;
+    }
+    .mode-sel:focus { border-color:var(--blue); }
+    .mode-sel option { background:var(--surface); }
+
+    .toggle-wrap {
+      display:flex; align-items:center; gap:7px; cursor:pointer;
+      padding:6px 12px; border-radius:8px; border:1px solid var(--border);
+      background:none; transition:all 0.15s;
+    }
+    .toggle-wrap:hover { border-color:var(--purple); background:var(--purple-dim); }
+    .toggle-wrap.active { border-color:var(--purple); background:var(--purple-dim); }
+    .toggle-wrap input { accent-color:var(--purple); cursor:pointer; }
+    .toggle-lbl { font-family:var(--font-m); font-size:11px; color:var(--text-dim); }
+    .toggle-badge {
+      font-family:var(--font-m); font-size:10px; padding:2px 7px; border-radius:4px;
+      background:rgba(155,119,255,0.15); color:var(--purple);
+    }
+
+    .run-btn {
+      margin-left:auto; display:flex; align-items:center; gap:8px;
+      padding:10px 22px; border:none; border-radius:10px; cursor:pointer;
+      background:linear-gradient(135deg, var(--blue) 0%, #1A5FCC 100%);
+      color:#fff; font-family:var(--font-b); font-size:14px; font-weight:700;
+      letter-spacing:0.02em; transition:all 0.2s;
+    }
+    .run-btn:hover { transform:translateY(-1px); box-shadow:0 8px 28px rgba(74,158,255,0.3); }
+    .run-btn:active { transform:none; box-shadow:none; }
+    .run-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
 
     .spinner {
-      width: 18px; height: 18px;
-      border: 2px solid #e5e7eb;
-      border-top-color: #3b82f6;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      flex-shrink: 0;
+      width:14px; height:14px; border:2px solid rgba(255,255,255,0.25);
+      border-top-color:#fff; border-radius:50%;
+      animation:spin 0.7s linear infinite; flex-shrink:0;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin { to { transform:rotate(360deg); } }
 
-    .answer-text { white-space: pre-wrap; line-height: 1.75; }
+    /* Cache stats strip */
+    .cache-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    @media(max-width:700px) { .cache-strip { grid-template-columns:repeat(2,1fr); } }
 
-    .chunk-card:hover { background: #f8fafc; }
+    .stat-tile {
+      background:var(--surface); border:1px solid var(--border); border-radius:14px;
+      padding:20px 14px; text-align:center; position:relative; overflow:hidden;
+      transition:border-color 0.2s, transform 0.2s;
+    }
+    .stat-tile:hover { border-color:var(--border-hi); transform:translateY(-2px); }
+    .stat-tile::before {
+      content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+      width:56%; height:1px;
+      background:linear-gradient(to right, transparent, var(--ta,var(--gold)), transparent);
+    }
+    .stat-num {
+      font-family:var(--font-m); font-size:26px; font-weight:600;
+      color:var(--ta,var(--gold)); line-height:1; margin-bottom:7px; letter-spacing:-0.02em;
+    }
+    .stat-lbl { font-size:10px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.09em; }
+    .cache-meta {
+      font-family:var(--font-m); font-size:10px; color:var(--text-dimmer);
+      display:flex; gap:16px; margin-top:14px; flex-wrap:wrap;
+    }
+    .cache-meta span { color:var(--text-dim); }
 
-    .fade-in { animation: fadeIn 0.4s ease forwards; }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    /* Dual panel */
+    .dual { display:grid; grid-template-columns:5fr 6fr; gap:20px; }
+    @media(max-width:800px){ .dual { grid-template-columns:1fr; } }
 
-    #answer-section { display: none; }
-    #steps-section  { display: none; }
+    /* RAG pipeline graph */
+    .g-card { padding:24px; }
+    .g-title {
+      font-family:var(--font-d); font-size:16px; margin-bottom:22px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .g-proc { font-family:var(--font-m); font-size:10px; color:var(--blue); letter-spacing:0.1em; display:flex; align-items:center; gap:6px; }
+
+    .g-node {
+      display:flex; align-items:center; gap:13px;
+      padding:13px 15px; border-radius:12px;
+      border:1px solid var(--border); background:rgba(255,255,255,0.015);
+      opacity:.3; transition:all 0.4s ease;
+    }
+    .g-node.lit {
+      opacity:1; border-color:var(--nc,var(--blue));
+      background:rgba(var(--nr,74,158,255),0.06);
+      box-shadow:0 0 18px rgba(var(--nr,74,158,255),0.1) inset;
+    }
+    .g-node.active-now {
+      opacity:1; border-color:var(--nc,var(--blue));
+      background:rgba(var(--nr,74,158,255),0.08);
+      box-shadow:0 0 22px rgba(var(--nr,74,158,255),0.15) inset;
+      animation: node-pulse 1.2s ease infinite;
+    }
+    @keyframes node-pulse {
+      0%,100% { box-shadow:0 0 18px rgba(var(--nr,74,158,255),0.1) inset; }
+      50%      { box-shadow:0 0 32px rgba(var(--nr,74,158,255),0.25) inset; }
+    }
+    .g-conn { padding:1px 0 1px 27px; }
+    .g-line {
+      width:2px; height:14px; background:var(--border); border-radius:1px; transition:background 0.4s;
+    }
+    .g-line.lit { background:linear-gradient(to bottom, var(--blue), transparent); }
+
+    .n-ico {
+      width:32px; height:32px; border-radius:9px; flex-shrink:0;
+      background:rgba(255,255,255,0.04); display:flex; align-items:center; justify-content:center;
+      font-size:14px; transition:background 0.4s;
+    }
+    .g-node.lit .n-ico,
+    .g-node.active-now .n-ico { background:rgba(var(--nr,74,158,255),0.15); }
+    .n-name { font-family:var(--font-m); font-size:11px; font-weight:600; color:var(--text); margin-bottom:2px; }
+    .n-desc { font-size:11px; color:var(--text-dim); }
+    .n-detail {
+      font-family:var(--font-m); font-size:10px; color:var(--nc,var(--blue));
+      margin-top:3px; opacity:0; transition:opacity 0.4s;
+    }
+    .g-node.lit .n-detail { opacity:1; }
+    .n-badge {
+      font-family:var(--font-m); font-size:10px; padding:3px 8px; border-radius:6px;
+      background:rgba(var(--nr,74,158,255),0.15); color:var(--nc,var(--blue));
+      opacity:0; transition:opacity 0.4s; margin-left:auto; flex-shrink:0;
+    }
+    .g-node.lit .n-badge { opacity:1; }
+
+    /* Result card */
+    .r-card { padding:24px; display:flex; flex-direction:column; }
+    .r-placeholder {
+      flex:1; display:flex; flex-direction:column; align-items:center;
+      justify-content:center; gap:10px; min-height:220px;
+    }
+    .r-placeholder-ico { font-size:36px; opacity:.2; }
+    .r-placeholder-txt { font-size:13px; color:var(--text-dimmer); }
+
+    .cached-banner {
+      display:flex; align-items:center; gap:10px;
+      padding:11px 15px; border-radius:11px; margin-bottom:14px;
+      background:var(--amber-dim); border:1px solid rgba(245,166,35,0.22);
+    }
+    .cached-banner-ico { font-size:15px; flex-shrink:0; }
+    .cached-banner-t   { font-size:12px; font-weight:700; color:var(--amber); }
+    .cached-banner-sim { font-family:var(--font-m); font-size:11px; color:rgba(245,166,35,0.6); margin-left:auto; }
+
+    .r-badges { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
+    .badge {
+      font-family:var(--font-m); font-size:11px; padding:4px 10px;
+      border-radius:6px; font-weight:500;
+    }
+
+    .ans-box {
+      font-size:14px; line-height:1.75; color:var(--text); white-space:pre-wrap;
+      padding:15px 16px; background:rgba(255,255,255,0.02);
+      border:1px solid var(--border); border-radius:10px;
+      max-height:220px; overflow-y:auto;
+    }
+    .ans-box::-webkit-scrollbar { width:3px; }
+    .ans-box::-webkit-scrollbar-thumb { background:var(--border-hi); border-radius:2px; }
+
+    .copy-btn {
+      background:none; border:none; color:var(--text-dimmer); font-family:var(--font-m);
+      font-size:11px; cursor:pointer; display:flex; align-items:center; gap:5px;
+      margin-top:10px; transition:color 0.2s;
+    }
+    .copy-btn:hover { color:var(--text-dim); }
+
+    /* Collapsible sections */
+    .coll-wrap { margin-top:16px; border-top:1px solid var(--border); }
+    .coll-btn {
+      width:100%; display:flex; align-items:center; justify-content:space-between;
+      padding:13px 0 0; background:none; border:none;
+      color:var(--text-dim); font-family:var(--font-b); font-size:12px; font-weight:600;
+      cursor:pointer; transition:color 0.2s;
+    }
+    .coll-btn:hover { color:var(--text); }
+    .coll-body { display:none; margin-top:12px; }
+    .coll-body.open { display:block; }
+
+    /* Chunk card */
+    .chunk-item {
+      padding:12px 14px; border-radius:10px; border:1px solid var(--border);
+      margin-bottom:9px; transition:border-color 0.2s;
+    }
+    .chunk-item:hover { border-color:var(--border-hi); }
+    .chunk-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+    .chunk-doc  { font-family:var(--font-m); font-size:10px; color:var(--blue); }
+    .chunk-score { font-family:var(--font-m); font-size:10px; color:var(--text-dimmer); }
+    .chunk-score.reranked { color:var(--purple); }
+    .chunk-text { font-size:12px; color:var(--text-dim); line-height:1.6; }
+
+    pre.ctx {
+      font-family:var(--font-m); font-size:11px; color:var(--text-dim);
+      background:rgba(255,255,255,0.02); border:1px solid var(--border);
+      border-radius:10px; padding:14px; overflow:auto; max-height:180px; white-space:pre-wrap;
+    }
+    pre.ctx::-webkit-scrollbar { width:3px; }
+    pre.ctx::-webkit-scrollbar-thumb { background:var(--border-hi); border-radius:2px; }
+
+    /* Error */
+    .err-card {
+      display:none; padding:14px 18px; margin-top:16px;
+      background:var(--red-dim); border:1px solid rgba(231,76,60,.25); border-radius:12px;
+    }
+    .err-t { font-size:13px; font-weight:700; color:var(--red); margin-bottom:4px; }
+    .err-m { font-family:var(--font-m); font-size:12px; color:rgba(231,76,60,.65); }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes countPop {
+      0%   { transform:scale(1); }
+      40%  { transform:scale(1.08); }
+      100% { transform:scale(1); }
+    }
+    .pop    { animation: countPop 0.3s ease; }
+    .hidden { display:none !important; }
+    .fade-in { animation: fadeUp 0.35s ease both; }
   </style>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body>
 
-  <!-- Top bar -->
-  <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
-    <div class="max-w-4xl mx-auto px-6 py-4 flex items-center gap-3">
-      <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3-3-3z"/>
+  <div id="progress-bar"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="hdr">
+      <div class="brand-gem">
+        <svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M21 21l-4.35-4.35M11 19A8 8 0 1011 3a8 8 0 000 16z"/>
         </svg>
       </div>
       <div>
-        <h1 class="text-base font-semibold text-slate-800 leading-tight">Novus Bank RAG Assistant</h1>
-        <p class="text-xs text-slate-500">AI-powered policy Q&amp;A</p>
+        <div class="brand-name">Novus RAG Assistant</div>
+        <div class="brand-sub">pgvector · semantic cache · OpenAI</div>
       </div>
-      <div class="ml-auto flex items-center gap-2">
-        <span id="health-dot" class="w-2 h-2 rounded-full bg-slate-300"></span>
-        <span id="health-label" class="text-xs text-slate-500">checking…</span>
+      <div class="hdr-right">
+        <div style="display:flex;align-items:center;gap:7px">
+          <div class="live-dot" id="health-dot"></div>
+          <span class="live-label" id="health-label">connecting…</span>
+        </div>
+        <span class="ts-label" id="last-ts">—</span>
       </div>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-6 py-8 space-y-6">
+  <main>
+    <div class="wrap">
 
-    <!-- Query form -->
-    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-      <h2 class="text-sm font-semibold text-slate-700 mb-4">Ask a question</h2>
-      <div class="space-y-3">
-        <textarea
-          id="query-input"
-          rows="3"
-          placeholder="e.g. What is the UPI daily transaction limit?"
-          class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800
-                 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500
-                 focus:border-transparent resize-none transition"
-        ></textarea>
+      <!-- Query -->
+      <div class="sec">
+        <div class="sec-hdr">
+          <span class="sec-tag">Policy Query</span>
+          <div class="sec-line"></div>
+        </div>
+        <div class="card q-card">
+          <textarea id="query-input" class="q-area" rows="3"
+            placeholder="e.g. What is the UPI daily transaction limit for Novus Plus?"></textarea>
 
-        <div class="flex items-center gap-3 flex-wrap">
-          <div class="flex items-center gap-2">
-            <label class="text-xs font-medium text-slate-600">Mode</label>
-            <select
-              id="mode-select"
-              class="text-sm border border-slate-300 rounded-lg px-3 py-1.5 text-slate-700
-                     focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
+          <div class="q-foot">
+            <span class="q-try">Try:</span>
+            <button class="chip" onclick="setQ('What is the UPI daily transaction limit?')">UPI limit</button>
+            <button class="chip" onclick="setQ('What are the membership tiers and their benefits?')">Membership tiers</button>
+            <button class="chip" onclick="setQ('How do I dispute a fraudulent transaction?')">Fraud dispute</button>
+            <button class="chip" onclick="setQ('What is the minimum balance required for Novus Plus?')">Min balance</button>
+          </div>
+
+          <div class="ctrl-row">
+            <span class="ctrl-label">Mode</span>
+            <select id="mode-select" class="mode-sel">
               <option value="dense">Dense (vector search)</option>
               <option value="hybrid">Hybrid (dense + BM25)</option>
               <option value="cache">Cache (semantic cache)</option>
               <option value="router">Router (difficulty-aware)</option>
             </select>
-          </div>
 
-          <label class="flex items-center gap-1.5 cursor-pointer select-none group">
-            <input
-              type="checkbox"
-              id="reranker-toggle"
-              class="w-3.5 h-3.5 rounded accent-violet-600 cursor-pointer"
-            />
-            <span class="text-xs font-medium text-slate-600 group-hover:text-slate-800 transition">
-              Reranker
-            </span>
-            <span class="text-xs px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 font-medium">Cohere</span>
-          </label>
+            <label class="toggle-wrap" id="reranker-wrap">
+              <input type="checkbox" id="reranker-toggle"
+                onchange="document.getElementById('reranker-wrap').classList.toggle('active', this.checked)" />
+              <span class="toggle-lbl">Reranker</span>
+              <span class="toggle-badge">Cohere</span>
+            </label>
 
-          <button
-            id="submit-btn"
-            onclick="submitQuery()"
-            class="ml-auto flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700
-                   text-white text-sm font-medium rounded-xl transition disabled:opacity-50
-                   disabled:cursor-not-allowed"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
-            Ask
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Cache stats panel -->
-    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h2 class="text-sm font-semibold text-slate-700">Semantic Cache</h2>
-          <p class="text-xs text-slate-400 mt-0.5">
-            Backend: <span id="stat-backend" class="font-medium text-slate-500">—</span>
-            &nbsp;·&nbsp; Threshold: <span id="stat-threshold" class="font-medium text-slate-500">—</span>
-          </p>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="refreshStats()"
-            class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500
-                   hover:bg-slate-50 transition flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-            </svg>
-            Refresh
-          </button>
-          <button onclick="clearCache()"
-            class="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500
-                   hover:bg-red-50 transition flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-            </svg>
-            Clear cache
-          </button>
-        </div>
-      </div>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div class="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-center">
-          <p class="text-xl font-semibold text-slate-800" id="stat-entries">—</p>
-          <p class="text-xs text-slate-400 mt-0.5">Entries</p>
-        </div>
-        <div class="rounded-xl bg-green-50 border border-green-100 px-4 py-3 text-center">
-          <p class="text-xl font-semibold text-green-700" id="stat-hits">—</p>
-          <p class="text-xs text-green-400 mt-0.5">Hits</p>
-        </div>
-        <div class="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-center">
-          <p class="text-xl font-semibold text-red-500" id="stat-misses">—</p>
-          <p class="text-xs text-red-300 mt-0.5">Misses</p>
-        </div>
-        <div class="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 text-center">
-          <p class="text-xl font-semibold text-blue-700" id="stat-hitrate">—</p>
-          <p class="text-xs text-blue-400 mt-0.5">Hit Rate</p>
-        </div>
-      </div>
-      <p id="stat-status" class="text-xs text-slate-400 mt-3 text-right hidden"></p>
-    </section>
-
-    <!-- Processing steps -->
-    <section id="steps-section" class="space-y-3">
-      <h2 class="text-sm font-semibold text-slate-700 px-1">Processing pipeline</h2>
-
-      <!-- Step 1: Embed -->
-      <div id="step-embed" class="step-card pending bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-start gap-4">
-        <div class="step-icon mt-0.5">
-          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 7h16M4 12h16M4 17h7"/>
-            </svg>
+            <button class="run-btn" id="submit-btn" onclick="submitQuery()">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              Ask
+            </button>
           </div>
         </div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-slate-700">1 · Embed query</span>
-            <div class="step-spinner hidden spinner"></div>
-            <span class="step-check hidden text-green-500 text-base">✓</span>
-          </div>
-          <p class="text-xs text-slate-500 mt-0.5">text-embedding-3-small → 1536-dim vector</p>
-          <p class="step-detail text-xs text-slate-400 mt-1 hidden"></p>
+        <div class="err-card" id="err-card">
+          <div class="err-t">Request Failed</div>
+          <div class="err-m" id="err-msg"></div>
         </div>
       </div>
 
-      <!-- Step 2: Retrieve -->
-      <div id="step-retrieve" class="step-card pending bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-start gap-4">
-        <div class="step-icon mt-0.5">
-          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
-            </svg>
+      <!-- Semantic Cache -->
+      <div class="sec">
+        <div class="sec-hdr">
+          <span class="sec-tag gold">Semantic Cache</span>
+          <div class="sec-line"></div>
+          <button class="sec-action" onclick="refreshStats()">REFRESH</button>
+          <button class="sec-action danger" onclick="clearCache()">CLEAR</button>
+        </div>
+        <div class="cache-strip">
+          <div class="stat-tile" style="--ta:var(--text-dim)">
+            <div class="stat-num" id="c-entries">—</div>
+            <div class="stat-lbl">Entries</div>
+          </div>
+          <div class="stat-tile" style="--ta:var(--green)">
+            <div class="stat-num" id="c-hits">—</div>
+            <div class="stat-lbl">Hits</div>
+          </div>
+          <div class="stat-tile" style="--ta:var(--red)">
+            <div class="stat-num" id="c-misses">—</div>
+            <div class="stat-lbl">Misses</div>
+          </div>
+          <div class="stat-tile" style="--ta:var(--gold)">
+            <div class="stat-num" id="c-hitrate">—</div>
+            <div class="stat-lbl">Hit Rate</div>
           </div>
         </div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-slate-700">2 · Retrieve chunks</span>
-            <div class="step-spinner hidden spinner"></div>
-            <span class="step-check hidden text-green-500 text-base">✓</span>
-          </div>
-          <p class="text-xs text-slate-500 mt-0.5">pgvector cosine search — top-5 policy passages</p>
-          <p class="step-detail text-xs text-slate-400 mt-1 hidden"></p>
+        <div class="cache-meta">
+          Backend: <span id="c-backend">—</span>
+          &nbsp;·&nbsp;
+          Threshold: <span id="c-threshold">—</span>
+          &nbsp;·&nbsp;
+          <span id="c-status" style="color:var(--text-dimmer)">—</span>
         </div>
       </div>
 
-      <!-- Step 3: Assemble context -->
-      <div id="step-context" class="step-card pending bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-start gap-4">
-        <div class="step-icon mt-0.5">
-          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>
-            </svg>
+      <!-- Dual panel: RAG pipeline + result -->
+      <div class="sec dual">
+
+        <!-- RAG pipeline -->
+        <div class="card g-card">
+          <div class="g-title">
+            RAG Pipeline
+            <div class="g-proc hidden" id="g-proc">
+              <div class="spinner" style="border-top-color:var(--blue)"></div>
+              PROCESSING
+            </div>
+          </div>
+
+          <!-- Embed -->
+          <div class="g-node" id="n-embed" style="--nc:var(--gold);--nr:230,180,74">
+            <div class="n-ico">🔢</div>
+            <div style="flex:1">
+              <div class="n-name">EMBED</div>
+              <div class="n-desc">text-embedding-3-small · 1536-dim</div>
+              <div class="n-detail" id="nd-embed">vector ready</div>
+            </div>
+            <div class="n-badge">✓</div>
+          </div>
+          <div class="g-conn"><div class="g-line" id="gl-1"></div></div>
+
+          <!-- Retrieve -->
+          <div class="g-node" id="n-retrieve" style="--nc:var(--blue);--nr:74,158,255">
+            <div class="n-ico">🔍</div>
+            <div style="flex:1">
+              <div class="n-name">RETRIEVE</div>
+              <div class="n-desc" id="nd-retrieve-sub">pgvector cosine search · top-5</div>
+              <div class="n-detail" id="nd-retrieve">chunks fetched</div>
+            </div>
+            <div class="n-badge">✓</div>
+          </div>
+          <div class="g-conn"><div class="g-line" id="gl-2"></div></div>
+
+          <!-- Assemble -->
+          <div class="g-node" id="n-assemble" style="--nc:var(--purple);--nr:155,119,255">
+            <div class="n-ico">📄</div>
+            <div style="flex:1">
+              <div class="n-name">ASSEMBLE</div>
+              <div class="n-desc">numbered passage context block</div>
+              <div class="n-detail" id="nd-assemble">context built</div>
+            </div>
+            <div class="n-badge">✓</div>
+          </div>
+          <div class="g-conn"><div class="g-line" id="gl-3"></div></div>
+
+          <!-- Generate -->
+          <div class="g-node" id="n-generate" style="--nc:var(--green);--nr:46,204,113">
+            <div class="n-ico">✨</div>
+            <div style="flex:1">
+              <div class="n-name">GENERATE</div>
+              <div class="n-desc" id="nd-generate-sub">gpt-4o-mini · temp 0.1</div>
+              <div class="n-detail" id="nd-generate">answer ready</div>
+            </div>
+            <div class="n-badge">✓</div>
           </div>
         </div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-slate-700">3 · Assemble context</span>
-            <div class="step-spinner hidden spinner"></div>
-            <span class="step-check hidden text-green-500 text-base">✓</span>
+
+        <!-- Result -->
+        <div class="card r-card" id="r-card">
+          <div class="r-placeholder" id="r-placeholder">
+            <div class="r-placeholder-ico">🔎</div>
+            <div class="r-placeholder-txt">Submit a query to see the RAG response</div>
           </div>
-          <p class="text-xs text-slate-500 mt-0.5">Formats retrieved passages as numbered context block</p>
-          <p class="step-detail text-xs text-slate-400 mt-1 hidden"></p>
-        </div>
-      </div>
 
-      <!-- Step 4: Generate -->
-      <div id="step-generate" class="step-card pending bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-start gap-4">
-        <div class="step-icon mt-0.5">
-          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-            </svg>
+          <div id="r-content" class="hidden fade-in" style="flex:1">
+            <!-- Cached banner -->
+            <div class="cached-banner hidden" id="cached-banner">
+              <div class="cached-banner-ico">⚡</div>
+              <div class="cached-banner-t">Response served from semantic cache</div>
+              <div class="cached-banner-sim" id="cached-sim"></div>
+            </div>
+
+            <!-- Badges -->
+            <div class="r-badges" id="r-badges"></div>
+
+            <!-- Answer -->
+            <div class="ans-box" id="ans-text"></div>
+            <button class="copy-btn" onclick="copyAns()">
+              <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+              Copy answer
+            </button>
+
+            <!-- Retrieved chunks collapsible -->
+            <div class="coll-wrap">
+              <button class="coll-btn" onclick="toggleColl('chunks-body', 'chev-chunks')">
+                <span>Retrieved Chunks <span id="chunk-count" style="color:var(--text-dimmer)"></span></span>
+                <svg id="chev-chunks" width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+              <div class="coll-body" id="chunks-body">
+                <div id="chunks-list" style="margin-top:4px"></div>
+              </div>
+            </div>
+
+            <!-- Context collapsible -->
+            <div class="coll-wrap">
+              <button class="coll-btn" onclick="toggleColl('ctx-body', 'chev-ctx')">
+                <span>Assembled Context</span>
+                <svg id="chev-ctx" width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+              <div class="coll-body" id="ctx-body">
+                <pre class="ctx" id="ctx-text" style="margin-top:12px"></pre>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-slate-700">4 · Generate answer</span>
-            <div class="step-spinner hidden spinner"></div>
-            <span class="step-check hidden text-green-500 text-base">✓</span>
-          </div>
-          <p class="text-xs text-slate-500 mt-0.5" id="gen-subtitle">LLM generation via gpt-4o-mini</p>
-          <p class="step-detail text-xs text-slate-400 mt-1 hidden"></p>
-        </div>
-      </div>
-    </section>
 
-    <!-- Answer section -->
-    <section id="answer-section" class="fade-in space-y-4">
+      </div><!-- /dual -->
 
-      <!-- Answer card -->
-      <div class="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6">
-        <div id="cached-banner" class="hidden mb-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">
-          <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
-          <span class="text-xs font-medium text-amber-700">Response served from semantic cache</span>
-          <span id="cached-similarity" class="ml-auto text-xs text-amber-500 font-mono"></span>
-        </div>
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-semibold text-slate-700">Answer</h2>
-          <div class="flex items-center gap-2 flex-wrap justify-end">
-            <span id="badge-mode"   class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium"></span>
-            <span id="badge-model"  class="text-xs px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium"></span>
-            <span id="badge-time"   class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium"></span>
-            <span id="badge-cache"  class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium hidden"></span>
-            <span id="badge-trace"  class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-mono hidden"></span>
-          </div>
-        </div>
-        <p id="answer-text" class="answer-text text-slate-800 text-sm leading-relaxed"></p>
-        <button
-          onclick="copyAnswer()"
-          class="mt-3 text-xs text-slate-400 hover:text-slate-600 transition flex items-center gap-1"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-          </svg>
-          Copy
-        </button>
-      </div>
-
-      <!-- Retrieved chunks -->
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
-        <button
-          onclick="toggleChunks()"
-          class="w-full flex items-center justify-between px-6 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-2xl transition"
-        >
-          <span>Retrieved chunks <span id="chunk-count" class="text-slate-400 font-normal"></span></span>
-          <svg id="chunks-chevron" class="w-4 h-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-          </svg>
-        </button>
-        <div id="chunks-body" class="hidden px-6 pb-6 space-y-3">
-          <!-- filled by JS -->
-        </div>
-      </div>
-
-      <!-- Context preview -->
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
-        <button
-          onclick="toggleContext()"
-          class="w-full flex items-center justify-between px-6 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-2xl transition"
-        >
-          <span>Assembled context</span>
-          <svg id="context-chevron" class="w-4 h-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-          </svg>
-        </button>
-        <div id="context-body" class="hidden px-6 pb-6">
-          <pre id="context-text" class="text-xs text-slate-600 bg-slate-50 rounded-xl p-4 overflow-auto max-h-72 whitespace-pre-wrap"></pre>
-        </div>
-      </div>
-    </section>
-
-    <!-- Error card -->
-    <div id="error-card" class="hidden fade-in bg-red-50 border border-red-200 rounded-2xl p-5">
-      <p class="text-sm font-medium text-red-700">Request failed</p>
-      <p id="error-msg" class="text-xs text-red-600 mt-1"></p>
-    </div>
-
+    </div><!-- /wrap -->
   </main>
 
 <script>
-  const API_BASE = (window.location.origin && window.location.origin !== 'null')
-    ? window.location.origin
-    : 'http://localhost:8080';
+  const API = (window.location.origin && window.location.origin !== 'null')
+    ? window.location.origin : 'http://localhost:8080';
 
-  // ── cache stats ───────────────────────────────────────────────────────────
+  // ── Progress bar ──────────────────────────────────────────────────────────
+  const PB = document.getElementById('progress-bar');
+  const startPB = () => { PB.style.width = '65%'; };
+  const endPB   = () => { PB.style.width = '100%'; setTimeout(() => PB.style.width = '0%', 300); };
+
+  // ── Health check ──────────────────────────────────────────────────────────
+  async function checkHealth() {
+    try {
+      const r = await fetch(`${API}/health`);
+      const dot = document.getElementById('health-dot');
+      const lbl = document.getElementById('health-label');
+      if (r.ok) {
+        dot.className = 'live-dot'; lbl.textContent = 'API online';
+        lbl.style.color = 'var(--green)';
+      } else throw 0;
+    } catch {
+      document.getElementById('health-dot').className = 'live-dot offline';
+      document.getElementById('health-label').textContent = 'API offline';
+      document.getElementById('health-label').style.color = 'var(--red)';
+    }
+  }
+
+  // ── Example chips ─────────────────────────────────────────────────────────
+  function setQ(t) { document.getElementById('query-input').value = t; }
+
+  // ── Cache stats ───────────────────────────────────────────────────────────
+  function setVal(id, val) {
+    const el = document.getElementById(id);
+    if (!el || el.textContent === String(val)) return;
+    el.textContent = val;
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  }
+
   async function refreshStats() {
     try {
-      const r = await fetch(`${API_BASE}/cache/stats`);
+      const r = await fetch(`${API}/cache/stats`);
       if (!r.ok) return;
       const s = await r.json();
-      document.getElementById('stat-backend').textContent   = s.backend ?? '—';
-      document.getElementById('stat-threshold').textContent = s.threshold ?? '—';
-      document.getElementById('stat-entries').textContent   = s.entries ?? 0;
-      document.getElementById('stat-hits').textContent      = s.hits ?? 0;
-      document.getElementById('stat-misses').textContent    = s.misses ?? 0;
-      document.getElementById('stat-hitrate').textContent   =
-        s.total_lookups > 0 ? `${(s.hit_rate * 100).toFixed(1)}%` : '—';
-      const statusEl = document.getElementById('stat-status');
-      statusEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-      statusEl.classList.remove('hidden');
-    } catch { /* silently ignore if server is down */ }
+      setVal('c-entries', s.entries ?? 0);
+      setVal('c-hits',    s.hits ?? 0);
+      setVal('c-misses',  s.misses ?? 0);
+      setVal('c-hitrate', s.total_lookups > 0 ? `${(s.hit_rate * 100).toFixed(1)}%` : '—');
+      document.getElementById('c-backend').textContent   = s.backend ?? '—';
+      document.getElementById('c-threshold').textContent = s.threshold ?? '—';
+      document.getElementById('c-status').textContent    = `Updated ${new Date().toLocaleTimeString()}`;
+    } catch { /* silently ignore */ }
   }
 
   async function clearCache() {
     try {
-      const r = await fetch(`${API_BASE}/cache/clear`, { method: 'POST' });
-      if (!r.ok) return;
+      await fetch(`${API}/cache/clear`, { method:'POST' });
       await refreshStats();
-      const statusEl = document.getElementById('stat-status');
-      statusEl.textContent = `Cache cleared · ${new Date().toLocaleTimeString()}`;
-      statusEl.classList.remove('hidden');
+      document.getElementById('c-status').textContent = `Cache cleared · ${new Date().toLocaleTimeString()}`;
     } catch { }
   }
 
-  // ── health check ──────────────────────────────────────────────────────────
-  async function checkHealth() {
-    try {
-      const r = await fetch(`${API_BASE}/health`);
-      const dot   = document.getElementById('health-dot');
-      const label = document.getElementById('health-label');
-      if (r.ok) {
-        dot.className   = 'w-2 h-2 rounded-full bg-green-500';
-        label.textContent = 'API online';
-        label.className   = 'text-xs text-green-600';
-      } else {
-        throw new Error();
-      }
-    } catch {
-      const dot   = document.getElementById('health-dot');
-      const label = document.getElementById('health-label');
-      dot.className     = 'w-2 h-2 rounded-full bg-red-500';
-      label.textContent = 'API offline';
-      label.className   = 'text-xs text-red-500';
-    }
-  }
-  checkHealth();
-  refreshStats();
+  // ── Pipeline graph ────────────────────────────────────────────────────────
+  const NODES = ['embed','retrieve','assemble','generate'];
 
-  // ── step helpers ──────────────────────────────────────────────────────────
-  const STEP_IDS = ['step-embed', 'step-retrieve', 'step-context', 'step-generate'];
-
-  function setStepState(id, state, detailText) {
-    const card    = document.getElementById(id);
-    const spinner = card.querySelector('.step-spinner');
-    const check   = card.querySelector('.step-check');
-    const detail  = card.querySelector('.step-detail');
-    const icon    = card.querySelector('.step-icon div');
-
-    card.className = card.className.replace(/\b(pending|active|done|error)\b/g, '').trim();
-    card.classList.add('step-card', state);
-
-    if (state === 'active') {
-      spinner.classList.remove('hidden');
-      check.classList.add('hidden');
-      icon.className = icon.className.replace('bg-slate-100', 'bg-blue-100');
-      icon.querySelector('svg').classList.replace('text-slate-400', 'text-blue-500');
-    } else if (state === 'done') {
-      spinner.classList.add('hidden');
-      check.classList.remove('hidden');
-      icon.className = icon.className.replace('bg-blue-100', 'bg-emerald-100').replace('bg-slate-100', 'bg-emerald-100');
-      icon.querySelector('svg').classList.remove('text-slate-400', 'text-blue-500');
-      icon.querySelector('svg').classList.add('text-emerald-500');
-    } else if (state === 'error') {
-      spinner.classList.add('hidden');
-      check.classList.add('hidden');
-    }
-
-    if (detailText) {
-      detail.textContent = detailText;
-      detail.classList.remove('hidden');
-    }
-  }
-
-  function resetSteps() {
-    STEP_IDS.forEach(id => {
-      const card = document.getElementById(id);
-      card.className = 'step-card pending bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-start gap-4';
-      card.querySelector('.step-spinner').classList.add('hidden');
-      card.querySelector('.step-check').classList.add('hidden');
-      card.querySelector('.step-detail').classList.add('hidden');
-      card.querySelector('.step-detail').textContent = '';
-      const icon = card.querySelector('.step-icon div');
-      icon.className = 'w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center';
-      const svg = icon.querySelector('svg');
-      svg.className.baseVal = 'w-4 h-4 text-slate-400';
+  function resetGraph() {
+    NODES.forEach(n => {
+      document.getElementById(`n-${n}`)?.classList.remove('lit','active-now');
     });
+    ['gl-1','gl-2','gl-3'].forEach(l =>
+      document.getElementById(l)?.classList.remove('lit'));
   }
 
-  // ── main submit ───────────────────────────────────────────────────────────
+  function setNodeActive(id) {
+    const el = document.getElementById(`n-${id}`);
+    if (el) { el.classList.remove('lit'); el.classList.add('active-now'); }
+  }
+  function setNodeDone(id) {
+    const el = document.getElementById(`n-${id}`);
+    if (el) { el.classList.remove('active-now'); el.classList.add('lit'); }
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
   async function submitQuery() {
     const query = document.getElementById('query-input').value.trim();
     if (!query) { document.getElementById('query-input').focus(); return; }
@@ -454,161 +707,151 @@
     const useReranker = document.getElementById('reranker-toggle').checked;
     const btn         = document.getElementById('submit-btn');
 
-    // reset UI
     btn.disabled = true;
-    document.getElementById('answer-section').style.display = 'none';
-    document.getElementById('error-card').classList.add('hidden');
-    document.getElementById('steps-section').style.display = 'block';
-    resetSteps();
+    btn.innerHTML = '<div class="spinner"></div> Processing…';
+    document.getElementById('err-card').style.display = 'none';
+    document.getElementById('g-proc').classList.remove('hidden');
+    document.getElementById('r-placeholder').classList.remove('hidden');
+    document.getElementById('r-content').classList.add('hidden');
+    resetGraph();
+    startPB();
 
-    // animate steps while waiting
-    const delays = [0, 400, 900, 1500];
-    STEP_IDS.forEach((id, i) => setTimeout(() => setStepState(id, 'active'), delays[i]));
+    // Animate pipeline steps while waiting
+    const delays = [0, 450, 950, 1600];
+    const nodeOrder = ['embed','retrieve','assemble','generate'];
+    nodeOrder.forEach((n, i) => setTimeout(() => setNodeActive(n), delays[i]));
 
     try {
-      const resp = await fetch(`${API_BASE}/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, mode, use_reranker: useReranker })
+      const res = await fetch(`${API}/query`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ query, mode, use_reranker: useReranker }),
       });
-
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
-        throw new Error(err.detail || resp.statusText);
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.detail || res.statusText);
       }
-
-      const data = await resp.json();
-      populateResults(data, mode);
-      refreshStats();
-
-    } catch (e) {
-      STEP_IDS.forEach(id => setStepState(id, 'error'));
-      document.getElementById('error-card').classList.remove('hidden');
-      document.getElementById('error-msg').textContent = e.message;
+      const data = await res.json();
+      renderResult(data);
+      await refreshStats();
+    } catch(e) {
+      resetGraph();
+      document.getElementById('err-card').style.display = 'block';
+      document.getElementById('err-msg').textContent = e.message;
     } finally {
       btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Ask';
+      document.getElementById('g-proc').classList.add('hidden');
+      endPB();
+      document.getElementById('last-ts').textContent = new Date().toLocaleTimeString();
     }
   }
 
-  function populateResults(data, mode) {
-    // mark all steps done with real data
-    setStepState('step-embed',    'done', `Query embedded → 1536-dim vector`);
-    const reranked = data.retrieval_mode?.includes('+reranked');
-    setStepState('step-retrieve', 'done',
-      `Retrieved ${data.retrieved_chunks?.length ?? '?'} chunk(s) via ${data.retrieval_mode}` +
-      (reranked ? ' · reranked via Cohere' : ''));
-
-    const ctxLen = data.context?.length ?? 0;
-    setStepState('step-context', 'done', `Context assembled — ${ctxLen} chars`);
-
+  // ── Render result ─────────────────────────────────────────────────────────
+  function renderResult(data) {
     const cacheHit = data.retrieval_mode === 'cache_hit';
-    setStepState('step-generate', 'done',
-      cacheHit
-        ? `Cache hit — similarity ${(data.cache_similarity * 100).toFixed(1)}% (skipped LLM call)`
-        : `Generated by ${data.model_used} in ${data.elapsed_seconds.toFixed(2)}s`);
+    const reranked = data.retrieval_mode?.includes('+reranked');
+    const chunks   = data.retrieved_chunks || [];
 
-    // cached banner
+    // Light up pipeline
+    const embedDetail  = document.getElementById('nd-embed');
+    const retrDetail   = document.getElementById('nd-retrieve');
+    const assmDetail   = document.getElementById('nd-assemble');
+    const genDetail    = document.getElementById('nd-generate');
+    const retrSub      = document.getElementById('nd-retrieve-sub');
+    const genSub       = document.getElementById('nd-generate-sub');
+
+    embedDetail.textContent = '1536-dim vector ready';
+    retrSub.textContent = reranked
+      ? `pgvector cosine · top-5 → Cohere reranked`
+      : cacheHit ? 'cache hit — skipped retrieval' : `pgvector cosine · top-5`;
+    retrDetail.textContent  = cacheHit ? 'cache hit' : `${chunks.length} chunk(s) via ${data.retrieval_mode}`;
+    assmDetail.textContent  = `${data.context?.length ?? 0} chars assembled`;
+    genSub.textContent      = cacheHit ? 'cache hit — no LLM call' : `${data.model_used} · temp 0.1`;
+    genDetail.textContent   = cacheHit
+      ? `similarity ${((data.cache_similarity||0)*100).toFixed(1)}%`
+      : `${data.elapsed_seconds.toFixed(2)}s`;
+
+    NODES.forEach(n => setNodeDone(n));
+    document.getElementById('gl-1').classList.add('lit');
+    document.getElementById('gl-2').classList.add('lit');
+    document.getElementById('gl-3').classList.add('lit');
+
+    // Cached banner
     const banner = document.getElementById('cached-banner');
     if (cacheHit) {
       banner.classList.remove('hidden');
-      document.getElementById('cached-similarity').textContent =
-        `similarity ${(data.cache_similarity * 100).toFixed(2)}%`;
+      document.getElementById('cached-sim').textContent =
+        `similarity ${((data.cache_similarity||0)*100).toFixed(2)}%`;
     } else {
       banner.classList.add('hidden');
     }
 
-    // gen subtitle
-    document.getElementById('gen-subtitle').textContent =
-      `${data.model_used} · temp 0.1`;
+    // Badges
+    const modeColor  = cacheHit ? 'var(--amber)' : 'var(--blue)';
+    const modelColor = 'var(--purple)';
+    document.getElementById('r-badges').innerHTML = `
+      <span class="badge" style="background:rgba(0,0,0,0.35);color:${modeColor};border:1px solid ${modeColor}28">${data.retrieval_mode}</span>
+      <span class="badge" style="background:rgba(0,0,0,0.35);color:${modelColor};border:1px solid ${modelColor}28">${data.model_used}</span>
+      <span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text-dim);border:1px solid var(--border)">${data.elapsed_seconds.toFixed(2)}s</span>
+      ${data.cache_similarity != null ? `<span class="badge" style="background:rgba(0,0,0,0.35);color:var(--amber);border:1px solid rgba(245,166,35,.2)">sim ${(data.cache_similarity*100).toFixed(1)}%</span>` : ''}
+      ${data.trace_id ? `<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text-dimmer);border:1px solid var(--border)">trace:${data.trace_id.slice(0,8)}…</span>` : ''}
+    `;
 
-    // badges
-    document.getElementById('badge-mode').textContent   = data.retrieval_mode;
-    document.getElementById('badge-model').textContent  = data.model_used;
-    document.getElementById('badge-time').textContent   = `${data.elapsed_seconds.toFixed(2)}s`;
+    // Answer
+    document.getElementById('ans-text').textContent = data.answer || '';
 
-    const cacheBadge = document.getElementById('badge-cache');
-    if (data.cache_similarity != null) {
-      cacheBadge.textContent = `cache sim ${(data.cache_similarity * 100).toFixed(1)}%`;
-      cacheBadge.classList.remove('hidden');
-    } else {
-      cacheBadge.classList.add('hidden');
-    }
-
-    const traceBadge = document.getElementById('badge-trace');
-    if (data.trace_id) {
-      traceBadge.textContent = `trace: ${data.trace_id.slice(0, 8)}…`;
-      traceBadge.classList.remove('hidden');
-    } else {
-      traceBadge.classList.add('hidden');
-    }
-
-    // answer
-    document.getElementById('answer-text').textContent = data.answer;
-
-    // chunks
-    const chunksBody = document.getElementById('chunks-body');
-    chunksBody.innerHTML = '';
-    document.getElementById('chunk-count').textContent =
-      `(${data.retrieved_chunks?.length ?? 0})`;
-
-    (data.retrieved_chunks || []).forEach((chunk, i) => {
-      let scoreLabel = '';
-      let scoreBadgeClass = 'text-xs text-slate-400 font-medium';
-      if (chunk.rerank_score != null) {
-        scoreLabel = `rerank ${chunk.rerank_score.toFixed(4)}`;
-        scoreBadgeClass = 'text-xs text-violet-600 font-medium bg-violet-50 px-1.5 py-0.5 rounded-full';
-      } else if (chunk.similarity != null) {
-        scoreLabel = `similarity ${(chunk.similarity * 100).toFixed(1)}%`;
-      }
-      const div = document.createElement('div');
-      div.className = 'chunk-card border border-slate-200 rounded-xl p-4 cursor-default transition';
-      div.innerHTML = `
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
-            #${i + 1} · ${escHtml(chunk.doc_id ?? '')}
-          </span>
-          <span class="${scoreBadgeClass}">${scoreLabel}</span>
+    // Chunks
+    document.getElementById('chunk-count').textContent = `(${chunks.length})`;
+    const list = document.getElementById('chunks-list');
+    list.innerHTML = chunks.map((chunk, i) => {
+      const hasRerank = chunk.rerank_score != null;
+      const scoreLabel = hasRerank
+        ? `rerank ${chunk.rerank_score.toFixed(4)}`
+        : chunk.similarity != null ? `${(chunk.similarity*100).toFixed(1)}% cosine` : '';
+      return `<div class="chunk-item">
+        <div class="chunk-header">
+          <span class="chunk-doc">#${i+1} · ${escHtml(chunk.doc_id ?? '')}</span>
+          <span class="chunk-score${hasRerank?' reranked':''}">${scoreLabel}</span>
         </div>
-        <p class="text-xs text-slate-600 leading-relaxed">${escHtml(chunk.content ?? '')}</p>`;
-      chunksBody.appendChild(div);
-    });
+        <div class="chunk-text">${escHtml(chunk.content ?? '')}</div>
+      </div>`;
+    }).join('');
 
-    // context
-    document.getElementById('context-text').textContent = data.context ?? '';
+    // Context
+    document.getElementById('ctx-text').textContent = data.context ?? '';
 
-    // show section
-    document.getElementById('answer-section').style.display = 'block';
+    // Show result
+    document.getElementById('r-placeholder').classList.add('hidden');
+    document.getElementById('r-content').classList.remove('hidden');
   }
 
-  // ── toggles ───────────────────────────────────────────────────────────────
-  function toggleChunks() {
-    const body    = document.getElementById('chunks-body');
-    const chevron = document.getElementById('chunks-chevron');
-    const open    = body.classList.toggle('hidden');
-    chevron.style.transform = open ? '' : 'rotate(180deg)';
+  // ── Collapsible toggle ────────────────────────────────────────────────────
+  function toggleColl(bodyId, chevId) {
+    const body = document.getElementById(bodyId);
+    const chev = document.getElementById(chevId);
+    body.classList.toggle('open');
+    chev.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : '';
   }
 
-  function toggleContext() {
-    const body    = document.getElementById('context-body');
-    const chevron = document.getElementById('context-chevron');
-    const open    = body.classList.toggle('hidden');
-    chevron.style.transform = open ? '' : 'rotate(180deg)';
+  // ── Copy ──────────────────────────────────────────────────────────────────
+  async function copyAns() {
+    await navigator.clipboard.writeText(document.getElementById('ans-text').textContent).catch(()=>{});
   }
 
-  // ── utils ─────────────────────────────────────────────────────────────────
+  // ── Escape HTML ───────────────────────────────────────────────────────────
   function escHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  async function copyAnswer() {
-    const text = document.getElementById('answer-text').textContent;
-    await navigator.clipboard.writeText(text).catch(() => {});
-  }
-
-  // submit on Ctrl/Cmd + Enter
+  // ── Keyboard shortcut ─────────────────────────────────────────────────────
   document.getElementById('query-input').addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submitQuery();
   });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  checkHealth();
+  refreshStats();
 </script>
 </body>
 </html>
