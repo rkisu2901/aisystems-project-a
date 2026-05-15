@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from scripts.rag import ask
+from scripts.rag import ask, _cache as _rag_cache
 
 app = FastAPI(title="Novus Bank RAG API", version="1.0.0")
 
@@ -44,6 +44,7 @@ class QueryRequest(BaseModel):
     guardrail_sample_rate: float = Field(default=1.0, ge=0.0, le=1.0)  # output guardrail sampling fraction
     use_anonymizer: bool = False           # P3.2: PII strip/restore around LLM calls
     use_confidence: bool = False           # O2.2: confidence-gated answers
+    use_reranker: bool = False              # Cohere cross-encoder reranker (opt-in)
     include_restricted: bool = False       # WARNING: no auth gate — see debt/api-ingest-unauthenticated
 
 
@@ -99,6 +100,7 @@ def query(req: QueryRequest):
             use_hybrid=use_hybrid,
             use_cache=use_cache,
             use_router=use_router,
+            use_reranker=req.use_reranker,
             use_guardrail=req.use_guardrail,
             use_output_guardrail=req.use_output_guardrail,
             guardrail_sample_rate=req.guardrail_sample_rate,
@@ -127,6 +129,17 @@ def query(req: QueryRequest):
         pii_redacted=result.get("pii_redacted"),
         ticket=ticket.model_dump() if ticket is not None else None,
     )
+
+
+@app.get("/cache/stats")
+def cache_stats():
+    return _rag_cache.stats()
+
+
+@app.post("/cache/clear")
+def cache_clear():
+    _rag_cache.reset()
+    return {"status": "cleared", "entries": 0}
 
 
 @app.post("/ingest", response_model=IngestResponse)

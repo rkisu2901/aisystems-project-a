@@ -38,6 +38,8 @@ class SemanticCache:
     def __init__(self, threshold: float = 0.92):
         self.threshold = threshold
         self._entries: list[dict[str, Any]] = []
+        self._hits = 0
+        self._misses = 0
 
     def _cosine(self, a: list[float], b: list[float]) -> float:
         va, vb = np.array(a), np.array(b)
@@ -55,12 +57,14 @@ class SemanticCache:
                 best_sim, best_entry = sim, entry
 
         if best_entry is not None and best_sim >= self.threshold:
+            self._hits += 1
             return {
                 "cached": True,
                 "cache_similarity": round(best_sim, 4),
                 "cached_query": best_entry["query"],
                 "answer": best_entry["answer"],
             }
+        self._misses += 1
         return None
 
     def set(self, query: str, embedding: list[float], answer: str) -> None:
@@ -69,8 +73,22 @@ class SemanticCache:
     def size(self) -> int:
         return len(self._entries)
 
+    def stats(self) -> dict:
+        total = self._hits + self._misses
+        return {
+            "backend": "in-memory",
+            "threshold": self.threshold,
+            "entries": len(self._entries),
+            "hits": self._hits,
+            "misses": self._misses,
+            "total_lookups": total,
+            "hit_rate": round(self._hits / total, 4) if total > 0 else 0.0,
+        }
+
     def reset(self) -> None:
         self._entries.clear()
+        self._hits = 0
+        self._misses = 0
 
 
 # ---------------------------------------------------------------------------

@@ -118,6 +118,58 @@
       </div>
     </section>
 
+    <!-- Cache stats panel -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-sm font-semibold text-slate-700">Semantic Cache</h2>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Backend: <span id="stat-backend" class="font-medium text-slate-500">—</span>
+            &nbsp;·&nbsp; Threshold: <span id="stat-threshold" class="font-medium text-slate-500">—</span>
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="refreshStats()"
+            class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500
+                   hover:bg-slate-50 transition flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Refresh
+          </button>
+          <button onclick="clearCache()"
+            class="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500
+                   hover:bg-red-50 transition flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            Clear cache
+          </button>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-center">
+          <p class="text-xl font-semibold text-slate-800" id="stat-entries">—</p>
+          <p class="text-xs text-slate-400 mt-0.5">Entries</p>
+        </div>
+        <div class="rounded-xl bg-green-50 border border-green-100 px-4 py-3 text-center">
+          <p class="text-xl font-semibold text-green-700" id="stat-hits">—</p>
+          <p class="text-xs text-green-400 mt-0.5">Hits</p>
+        </div>
+        <div class="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-center">
+          <p class="text-xl font-semibold text-red-500" id="stat-misses">—</p>
+          <p class="text-xs text-red-300 mt-0.5">Misses</p>
+        </div>
+        <div class="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 text-center">
+          <p class="text-xl font-semibold text-blue-700" id="stat-hitrate">—</p>
+          <p class="text-xs text-blue-400 mt-0.5">Hit Rate</p>
+        </div>
+      </div>
+      <p id="stat-status" class="text-xs text-slate-400 mt-3 text-right hidden"></p>
+    </section>
+
     <!-- Processing steps -->
     <section id="steps-section" class="space-y-3">
       <h2 class="text-sm font-semibold text-slate-700 px-1">Processing pipeline</h2>
@@ -212,6 +264,14 @@
 
       <!-- Answer card -->
       <div class="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6">
+        <div id="cached-banner" class="hidden mb-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">
+          <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          <span class="text-xs font-medium text-amber-700">Response served from semantic cache</span>
+          <span id="cached-similarity" class="ml-auto text-xs text-amber-500 font-mono"></span>
+        </div>
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-semibold text-slate-700">Answer</h2>
           <div class="flex items-center gap-2 flex-wrap justify-end">
@@ -281,6 +341,36 @@
     ? window.location.origin
     : 'http://localhost:8080';
 
+  // ── cache stats ───────────────────────────────────────────────────────────
+  async function refreshStats() {
+    try {
+      const r = await fetch(`${API_BASE}/cache/stats`);
+      if (!r.ok) return;
+      const s = await r.json();
+      document.getElementById('stat-backend').textContent   = s.backend ?? '—';
+      document.getElementById('stat-threshold').textContent = s.threshold ?? '—';
+      document.getElementById('stat-entries').textContent   = s.entries ?? 0;
+      document.getElementById('stat-hits').textContent      = s.hits ?? 0;
+      document.getElementById('stat-misses').textContent    = s.misses ?? 0;
+      document.getElementById('stat-hitrate').textContent   =
+        s.total_lookups > 0 ? `${(s.hit_rate * 100).toFixed(1)}%` : '—';
+      const statusEl = document.getElementById('stat-status');
+      statusEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      statusEl.classList.remove('hidden');
+    } catch { /* silently ignore if server is down */ }
+  }
+
+  async function clearCache() {
+    try {
+      const r = await fetch(`${API_BASE}/cache/clear`, { method: 'POST' });
+      if (!r.ok) return;
+      await refreshStats();
+      const statusEl = document.getElementById('stat-status');
+      statusEl.textContent = `Cache cleared · ${new Date().toLocaleTimeString()}`;
+      statusEl.classList.remove('hidden');
+    } catch { }
+  }
+
   // ── health check ──────────────────────────────────────────────────────────
   async function checkHealth() {
     try {
@@ -303,6 +393,7 @@
     }
   }
   checkHealth();
+  refreshStats();
 
   // ── step helpers ──────────────────────────────────────────────────────────
   const STEP_IDS = ['step-embed', 'step-retrieve', 'step-context', 'step-generate'];
@@ -388,6 +479,7 @@
 
       const data = await resp.json();
       populateResults(data, mode);
+      refreshStats();
 
     } catch (e) {
       STEP_IDS.forEach(id => setStepState(id, 'error'));
@@ -409,12 +501,21 @@
     const ctxLen = data.context?.length ?? 0;
     setStepState('step-context', 'done', `Context assembled — ${ctxLen} chars`);
 
-    // retrieval_mode === 'cache' + elapsed < 0.5s is a reliable cache-hit signal
-    const cacheHit = data.retrieval_mode === 'cache' && data.cache_similarity != null && data.elapsed_seconds < 0.5;
+    const cacheHit = data.retrieval_mode === 'cache_hit';
     setStepState('step-generate', 'done',
       cacheHit
         ? `Cache hit — similarity ${(data.cache_similarity * 100).toFixed(1)}% (skipped LLM call)`
         : `Generated by ${data.model_used} in ${data.elapsed_seconds.toFixed(2)}s`);
+
+    // cached banner
+    const banner = document.getElementById('cached-banner');
+    if (cacheHit) {
+      banner.classList.remove('hidden');
+      document.getElementById('cached-similarity').textContent =
+        `similarity ${(data.cache_similarity * 100).toFixed(2)}%`;
+    } else {
+      banner.classList.add('hidden');
+    }
 
     // gen subtitle
     document.getElementById('gen-subtitle').textContent =
