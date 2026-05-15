@@ -28,6 +28,12 @@ Parameters:
     NoEcho: true
     Description: OpenAI API key (stored in Secrets Manager)
 
+  CohereApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Cohere API key for cross-encoder reranking (optional)
+
   ContainerPort:
     Type: Number
     Default: 8080
@@ -343,6 +349,8 @@ Resources:
               Value: sk-lf-fab17270-12c9-43ce-b5bf-c8a54f95fa2d
             - Name: LANGFUSE_HOST
               Value: https://cloud.langfuse.com
+            - Name: COHERE_API_KEY
+              Value: !Ref CohereApiKey
 
   # CloudWatch log group
   LogGroup:
